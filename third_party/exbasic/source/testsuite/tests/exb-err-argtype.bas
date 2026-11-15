@@ -1,0 +1,4 @@
+X = F("S")
+FUNC F(A)
+  RETURN A
+ENDFUNC

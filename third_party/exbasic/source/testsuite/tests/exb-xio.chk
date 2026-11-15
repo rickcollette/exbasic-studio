@@ -1,0 +1,5 @@
+Name: XIO in Atari BASIC order
+Test: run
+Output:
+written after XIO 3
+written after XIO 3 1

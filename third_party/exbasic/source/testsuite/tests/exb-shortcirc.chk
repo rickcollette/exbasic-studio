@@ -1,0 +1,16 @@
+Name: Short-circuit AND and OR
+Test: run
+Output:
+and false: 0
+and true: 1
+or true: 1
+or false: 2
+safe
+0 0 0 0
+0 1 1 0
+0 1 0 1
+1 1 0 1
+1 1
+5
+3
+1 1

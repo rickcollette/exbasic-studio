@@ -1,0 +1,3 @@
+Name: Too many variables
+Test: compile-error
+Error: too many variables

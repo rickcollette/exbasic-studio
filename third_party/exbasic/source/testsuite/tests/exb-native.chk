@@ -1,0 +1,17 @@
+Name: Loops compiled to machine code
+Test: run
+# All the code as machine code, the loops are too short to be selected
+Options: -native:all
+Output:
+step -3: 749 -1
+var step: 749 -12
+empty: 1
+nested: 140
+compare: 11293
+limits: 1 1 1 1
+math: -546
+loops: 1820 4
+memory: -95
+1,4,9,
+12345
+clamp: 50 fib: 610

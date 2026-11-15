@@ -1,0 +1,7 @@
+Name: Test for using address of floating point vars
+Test: run
+Output:
+0.21875
+-0.03125
+1234.5
+0.0625

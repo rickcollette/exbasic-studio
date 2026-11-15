@@ -1,0 +1,4 @@
+Name: FUNC argument type error
+Test: compile-error
+Error: argument 1 of 'F' must be integer
+Error-pos: 1:6

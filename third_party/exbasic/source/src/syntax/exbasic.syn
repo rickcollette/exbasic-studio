@@ -1,0 +1,104 @@
+#
+#  exBASIC - BASIC compiler for the Atari 8-bit computers, based on FastBasic
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program.  If not, see <http://www.gnu.org/licenses/>
+#
+
+# exBASIC language:
+#  - FUNC / ENDFUNC with typed parameters, LOCAL variables and multiple
+#    results, called by name: X = F(1), A$ = G$(), Q, R = DivMod(7, 2)
+#  - DO WHILE / DO UNTIL / LOOP WHILE / LOOP UNTIL
+# The parsing actions are in src/compiler/parser-exbasic.cc
+
+TOKENS {
+ # Saves and restores the variables of recursive functions
+ TOK_FRAME_SAVE, TOK_FRAME_LOAD
+}
+
+EXTERN {
+ E_FUNC_DEF, E_FUNC_END, E_FUNC_LOCAL, E_IN_FUNC
+ E_RET_INT, E_RET_STR, E_RET_VI, E_RET_VS, E_FUNC_RETURN
+ E_FCALL_I, E_FCALL_S, E_FCALL_STMT, E_FCALL_MULTI
+ E_ARG_INT, E_ARG_STR, E_ARG_NEXT, E_FCALL_END
+ E_MULTI_TARGETS, E_LOOP_EXIT, E_ARG_BAD, E_FUNC_UNKNOWN
+}
+
+# Function arguments, the types are checked against the FUNC parameters
+FUNC_ARGS:
+        FUNC_ARG_CHECK FUNC_ARGS_MORE
+        pass
+
+FUNC_ARGS_MORE:
+        "," FUNC_ARG_CHECK FUNC_ARGS_MORE
+        pass
+
+# Reports an error if the argument does not match the parameter type
+FUNC_ARG_CHECK:
+        FUNC_ARG
+        E_ARG_BAD
+
+FUNC_ARG: function argument
+        E_ARG_INT EXPR emit TOK_PUSH E_ARG_NEXT
+        E_ARG_STR STR_EXPR emit TOK_PUSH E_ARG_NEXT
+
+# Values in RETURN, the types are checked against the FUNC results
+FRET_LIST:
+        FRET_VAL FRET_MORE
+        pass
+
+FRET_MORE:
+        "," FRET_VAL FRET_MORE
+        pass
+
+FRET_VAL: return value
+        E_RET_INT EXPR E_RET_VI
+        E_RET_STR STR_EXPR E_RET_VS
+
+# Function calls in expressions
+INT_FUNCTIONS:<
+        E_FCALL_I "(" FUNC_ARGS ")" E_FCALL_END
+
+STRING_FUNCTIONS:<
+        E_FCALL_S "(" FUNC_ARGS ")" E_FCALL_END
+
+# Statements, added before the standard ones so that "ENDFUNC" is not parsed
+# as "END".
+STATEMENT:<
+        "FUNC" E_FUNC_DEF
+        "ENDFUNC" E_FUNC_END
+        "LOCAL" E_FUNC_LOCAL
+        "RETurn" E_IN_FUNC FRET_LIST E_FUNC_RETURN
+        "DO" DO_COND
+        "Loop" LOOP_COND
+        E_FCALL_STMT "(" FUNC_ARGS ")" E_FCALL_END
+
+# Conditions in DO and LOOP, in separate rules so the parser skips spaces
+DO_COND: 'WHILE' or 'UNTIL'
+        "While" emit LT_DO_LOOP E_PUSH_LT FORCE_BOOL_EXPR emit TOK_CJUMP E_LOOP_EXIT
+        "Until" emit LT_DO_LOOP E_PUSH_LT FORCE_BOOL_EXPR emit TOK_CNJUMP E_LOOP_EXIT
+
+LOOP_COND: 'WHILE' or 'UNTIL'
+        "While" FORCE_BOOL_EXPR emit TOK_CNJUMP E_POP_LOOP
+        "Until" FORCE_BOOL_EXPR emit TOK_CJUMP E_POP_LOOP
+
+# Multiple assignment from a function: A, B$ = F(X), and reports calls to
+# undefined functions (E_FUNC_UNKNOWN always fails)
+LINE_ASSIGNMENT:<
+        E_MULTI_TARGETS EQUAL E_FCALL_MULTI "(" FUNC_ARGS ")" E_FCALL_END
+        E_FUNC_UNKNOWN
+
+INT_FUNCTIONS:
+        E_FUNC_UNKNOWN
+
+# vi:syntax=perl

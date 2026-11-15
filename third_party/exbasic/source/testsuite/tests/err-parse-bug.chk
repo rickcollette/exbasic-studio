@@ -1,0 +1,4 @@
+Name: Check infinite loop bug in parser
+Test: compile-error
+Error: variable name but got 'XI'
+Error-pos: 1:15

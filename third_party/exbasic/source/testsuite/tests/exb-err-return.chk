@@ -1,0 +1,4 @@
+Name: RETURN with too many values
+Test: compile-error
+Error: FUNC 'F' returns 1 value(s)
+Error-pos: 2:10

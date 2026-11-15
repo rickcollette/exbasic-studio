@@ -1,0 +1,4 @@
+Name: Check detection of missing loop end
+Test: compile-error
+Error: unclosed DO loop
+Error-pos: 2:0

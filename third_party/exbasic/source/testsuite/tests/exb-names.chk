@@ -1,0 +1,12 @@
+Name: Keyword prefixes, typed names, line IF and mixed math
+Test: run
+Output:
+7
+1 one 1.5
+then
+else
+ab
+e
+1.5 1 2.5
+fp compare
+1000 0.25

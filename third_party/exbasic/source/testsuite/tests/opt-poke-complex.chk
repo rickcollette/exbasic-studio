@@ -1,0 +1,11 @@
+Name: POKE constant address with complex values
+Test: run
+Output:
+6
+12
+2
+7 9
+5
+8
+11
+5

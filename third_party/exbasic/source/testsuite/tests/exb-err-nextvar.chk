@@ -1,0 +1,4 @@
+Name: NEXT with another variable
+Test: compile-error
+Error: NEXT J does not match FOR I
+Error-pos: 3:6

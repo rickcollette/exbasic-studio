@@ -1,0 +1,4 @@
+Name: Error, number added to a string
+Test: error
+Error: expected: '(', string expression
+Error-pos: 2:10

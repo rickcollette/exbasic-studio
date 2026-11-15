@@ -1,0 +1,14 @@
+Name: String functions
+Test: run
+Output:
+Hello|World|Wor|
+|Hello, World||
+World||d|
+HELLO, WORLD|hello, world|
+abc  |   abc||
+5 9 0 1
+0 8 12
+Hello, Atari|12
+Jello, Atari
+abc ABC
+0 65

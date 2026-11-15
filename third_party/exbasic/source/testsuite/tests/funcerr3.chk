@@ -1,0 +1,4 @@
+Name: Check detection of FUNC / DATA clash
+Test: compile-error
+Error: 'TEST1' is a FUNC
+Error-pos: 2:10

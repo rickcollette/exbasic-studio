@@ -1,0 +1,4 @@
+Name: Check error reporting in cross-compiler.
+Test: compile-error
+Error: variable name but got 'X'
+Error-pos: 2:6

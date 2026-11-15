@@ -1,0 +1,4 @@
+Name: Nested INCLUDE files
+Test: run
+Output:
+27 9 8

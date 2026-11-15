@@ -1,0 +1,6 @@
+Name: Bare RETURN exits FUNC and unwinds FOR
+Test: run
+Output:
+early
+loop
+done

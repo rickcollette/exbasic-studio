@@ -1,0 +1,4 @@
+FUNC Bad()
+ENDFUNC
+
+? Bad()

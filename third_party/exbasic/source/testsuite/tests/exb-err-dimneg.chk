@@ -1,0 +1,4 @@
+Name: Negative DIM size
+Test: compile-error
+Error: array size out of range (0 to 32767)
+Error-pos: 2:9

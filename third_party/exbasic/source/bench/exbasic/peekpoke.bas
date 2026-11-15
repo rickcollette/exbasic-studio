@@ -1,0 +1,15 @@
+DIM B(4095) BYTE
+A = ADR(B)
+T0 = TIME
+FOR I = 0 TO 4095
+  POKE A + I, 7
+NEXT
+C = 0
+FOR I = 0 TO 4095
+  C = C + PEEK(A + I)
+NEXT
+T1 = TIME
+F = FRE()
+OPEN #1, 8, 0, "H:R.TXT"
+PRINT #1, C; " "; T1 - T0; " "; F; " "; DPEEK(741)
+CLOSE #1

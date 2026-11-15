@@ -1,0 +1,4 @@
+Name: Check proper parsing of LOOP
+Test: compile-error
+Error: unclosed DO loop
+Error-pos: 1:0

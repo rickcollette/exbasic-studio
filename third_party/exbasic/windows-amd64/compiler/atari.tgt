@@ -1,0 +1,6 @@
+# Atari 8-bit computers, executable (XEX) file
+syntax a800.syn basic.syn dli.syn fileio.syn pm.syn graphics.syn sound.syn extended.syn sio.syn exbasic.syn exbasic-a800.syn float.syn fujinet.syn exbasic-fp.syn
+config exbasic.cfg
+ca65 -tatari
+library exbasic.lib
+extension .xex

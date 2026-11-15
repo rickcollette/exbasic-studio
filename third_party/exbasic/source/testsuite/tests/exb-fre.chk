@@ -1,0 +1,11 @@
+Name: FRE is unsigned
+Test: run
+Output:
+compare ok
+big ok
+1
+float ok
+1
+22
+right side ok
+difference ok

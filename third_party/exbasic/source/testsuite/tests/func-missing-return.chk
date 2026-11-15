@@ -1,0 +1,4 @@
+Name: Function call without RETURN value
+Test: compile-error
+Error: FUNC 'BAD' does not return a value
+Error-pos: 4:2

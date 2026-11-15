@@ -1,0 +1,10 @@
+T0 = TIME
+FOR I = 1 TO 300
+  PRINT "LINE "; I; " OF THE PRINT TEST"
+NEXT
+C = I - 1
+T1 = TIME
+F = FRE()
+OPEN #1, 8, 0, "H:R.TXT"
+PRINT #1, C; " "; T1 - T0; " "; F; " "; DPEEK(741)
+CLOSE #1

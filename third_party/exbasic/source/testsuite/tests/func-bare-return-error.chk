@@ -1,0 +1,4 @@
+Name: Bare RETURN does not make a function
+Test: compile-error
+Error: FUNC 'BARE' does not return a value
+Error-pos: 5:2

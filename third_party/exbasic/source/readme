@@ -1,0 +1,14 @@
+exBASIC %VERSION%
+BASIC compiler for the Atari 8-bit
+computers, based on FastBasic.
+
+This disk has the compiled sample
+programs (.COM) and their sources
+(.BAS). Type the name of a program to
+run it.
+
+EFAST is a screen accelerator.
+The programmer's manual is in the
+MANUAL folder of the compiler.
+
+Sample programs:

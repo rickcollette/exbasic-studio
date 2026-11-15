@@ -1,0 +1,6 @@
+Name: Division by zero stops the program
+Test: run
+Output:
+Before
+
+ERROR- 11

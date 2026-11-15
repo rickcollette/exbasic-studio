@@ -1,0 +1,8 @@
+Name: Floating point DATA continuation
+Test: run
+Output:
+1.5
+2.25
+10
+0.99
+2

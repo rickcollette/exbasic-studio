@@ -1,0 +1,5 @@
+# Atari 8-bit computers, cartridge (ROM) image
+include atari
+config exbasic-cart.cfg
+library exbasic-cart.lib
+extension .rom

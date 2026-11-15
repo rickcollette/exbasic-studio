@@ -1,0 +1,4 @@
+Name: String constant too long
+Test: compile-error
+Error: string too long (max 255 characters)
+Error-pos: 2:8

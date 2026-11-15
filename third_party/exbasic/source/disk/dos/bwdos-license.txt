@@ -1,0 +1,15 @@
+BW-DOS sources from:
+  https://github.com/dmsc/bwdos-mads
+
+Original BW-DOS 1.3 by BEWESOFT
+Modifications by Holger Janz and Daniel Serpell.
+
+Sources released to public in Jun 2023.
+
+From:
+  https://forums.atariage.com/topic/351486-bw-dos-v130/page/4/#comment-5319115
+
+I'm Jiří Bernášek, the only author of all Atari 8-bit software signed BEWESOFT,
+including BW-DOS up to version 1.30, and I release it all to the Public Domain,
+including sources where available.
+

@@ -1,0 +1,16 @@
+Name: FOR/NEXT loops with any STEP, edge limits and EXIT
+Test: run
+Output:
+10589 20 -7
+7 32767
+8 -32768
+-3 0 -10
+-2 0 -10
+-1 0 -10
+1 -12 11
+2 -16398 12
+3 -910 11
+110 21
+742
+666 37
+5 10

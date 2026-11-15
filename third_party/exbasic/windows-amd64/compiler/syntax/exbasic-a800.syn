@@ -1,0 +1,37 @@
+#
+#  exBASIC - BASIC compiler for the Atari 8-bit computers, based on FastBasic
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program.  If not, see <http://www.gnu.org/licenses/>
+#
+
+# exBASIC statements for the Atari input/output system:
+#  - STATUS #channel, var
+#  - COMMON var, ...   and   RUN "D:FILE.XEX"
+
+EXTERN {
+ E_EMPTY_STRING, E_COMMON, E_RUN_CALL
+}
+
+STATEMENT:<
+        # CIO STATUS command (13), the status code is stored in the variable
+        "STATus" IO_CHAN emit { TOK_PUSH_BYTE, 13, TOK_PUSH_0, TOK_PUSH } E_EMPTY_STRING \
+                 emit TOK_XIO "," VAR_WORD_LVALUE_SADDR emit { TOK_BYTE_PEEK, IOERROR, TOK_DPOKE }
+        # Variables kept when loading the next program with RUN
+        "COMMON" E_COMMON
+        # Opens the file in channel #7 and runs it, returns if there is an
+        # error opening the file.
+        "RUN" emit { TOK_BYTE, 7, TOK_CLOSE, TOK_BYTE, 7, TOK_PUSH_BYTE, OPEN, TOK_PUSH_BYTE, 4, TOK_PUSH } \
+                STR_EXPR emit TOK_XIO E_RUN_CALL
+
+# vi:syntax=perl

@@ -1,0 +1,81 @@
+version: '3'
+
+vars:
+  APP_NAME: "exbasic-studio"
+  BIN_DIR: "bin"
+  PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  GOOS: '{{.GOOS | default OS}}'
+
+includes:
+  common: ./build/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+  darwin: ./build/darwin/Taskfile.yml
+  linux: ./build/linux/Taskfile.yml
+  ios: ./build/ios/Taskfile.yml
+  android: ./build/android/Taskfile.yml
+
+tasks:
+  build:
+    desc: Build the application for the current or selected platform
+    cmds:
+      - task: "{{.GOOS}}:build"
+      - task: common:build:mkatr
+        vars:
+          TARGET_OS: '{{.GOOS}}'
+          TARGET_ARCH: '{{.ARCH | default ARCH}}'
+          OUTPUT: '{{.BIN_DIR}}/mkatr-go{{if eq .GOOS "windows"}}.exe{{end}}'
+      - task: common:stage:tools
+
+  package:
+    desc: Package a production build for the current or selected platform
+    cmds:
+      - task: "{{.GOOS}}:package"
+
+  run:
+    desc: Run the application for the current platform
+    cmds:
+      - task: "{{.GOOS}}:run"
+
+  dev:
+    desc: Run the application with Go and frontend live reload
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
+
+  test:
+    cmds:
+      - go test ./...
+
+  check:
+    desc: Run backend tests and frontend type checks
+    cmds:
+      - go test ./...
+      - npm --prefix frontend run check
+
+  bindings:
+    cmds:
+      - task: common:generate:bindings
+
+  frontend:
+    cmds:
+      - task: common:build:frontend
+
+  install:msix:tools:
+    cmds:
+      - task: windows:install:msix:tools
+
+  setup:docker:
+    cmds:
+      - task: common:setup:docker
+
+  toolchain:rebuild:exbasic:
+    desc: Rebuild eXBASIC from its language source tree and import the complete compiler distribution
+    vars:
+      EXBASIC_SOURCE: '{{.EXBASIC_SOURCE | default "E:/exBasic"}}'
+    cmds:
+      - cmd: '"C:/Program Files/Git/bin/bash.exe" -lc ''cd "{{.EXBASIC_SOURCE}}" && make -B all'''
+        platforms: [windows]
+      - cmd: 'powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}/build/tools/import-exbasic-windows.ps1" -Root "{{.ROOT_DIR}}" -Source "{{.EXBASIC_SOURCE}}"'
+        platforms: [windows]
+      - cmd: 'cd "{{.EXBASIC_SOURCE}}" && make -B all && mkdir -p "{{.ROOT_DIR}}/third_party/exbasic/{{OS}}-{{ARCH}}/compiler" && cp -R build/compiler/. "{{.ROOT_DIR}}/third_party/exbasic/{{OS}}-{{ARCH}}/compiler/"'
+        platforms: [linux, darwin]

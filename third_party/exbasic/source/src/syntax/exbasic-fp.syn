@@ -1,0 +1,33 @@
+#
+#  exBASIC - BASIC compiler for the Atari 8-bit computers, based on FastBasic
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program.  If not, see <http://www.gnu.org/licenses/>
+#
+
+# exBASIC language, floating point support.
+
+EXTERN {
+ E_FCALL_F, E_ARG_FP, E_RET_FP, E_RET_VF
+}
+
+FP_FUNCS:<
+        E_FCALL_F "(" FUNC_ARGS ")" E_FCALL_END
+
+FUNC_ARG:
+        E_ARG_FP FP_EXPR E_ARG_NEXT
+
+FRET_VAL:
+        E_RET_FP FP_EXPR E_RET_VF
+
+# vi:syntax=perl

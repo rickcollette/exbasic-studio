@@ -1,0 +1,8 @@
+Name: FOR range ends, INT and VAL
+Test: run
+Output:
+3
+3
+32767 -32768
+12 1 0 18
+screen18

@@ -1,0 +1,4 @@
+Name: COMMON inside a FUNC
+Test: compile-error
+Error: COMMON can't be inside a FUNC
+Error-pos: 3:8

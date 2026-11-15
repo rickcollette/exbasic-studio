@@ -1,0 +1,4 @@
+Name: Check detection of already defined FUNC
+Test: compile-error
+Error: FUNC 'TEST1' already defined at line 2
+Error-pos: 6:0

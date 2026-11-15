@@ -1,0 +1,4 @@
+Name: Hex constant out of range
+Test: compile-error
+Error: hex constant out of range
+Error-pos: 2:4

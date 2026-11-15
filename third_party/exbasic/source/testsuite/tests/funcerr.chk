@@ -1,0 +1,4 @@
+Name: Check detection of missing FUNC
+Test: compile-error
+Error: FUNC 'MISSING' is not defined
+Error-pos: 3:7

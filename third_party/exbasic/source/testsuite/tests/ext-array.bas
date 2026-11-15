@@ -1,0 +1,19 @@
+' Byte and word arrays with variable indexes and constant stores
+DIM A(300) BYTE, W(100)
+FOR I=0 TO 300 STEP 3:A(I)=1:NEXT
+FOR I=1 TO 300 STEP 7:A(I)=255:NEXT
+FOR I=2 TO 299 STEP 11:A(I+1)=2:NEXT
+FOR I=0 TO 300 STEP 50:A(I)=0:NEXT
+S=0:FOR I=0 TO 300:S=S*3+A(I):NEXT:? S
+FOR I=0 TO 100:W(I)=I*I-5000:NEXT
+S=0:K=3:FOR I=0 TO 97:S=S*3+W(I)+W(I+K)+I+K:NEXT:? S
+DIM P(1000) BYTE
+C=0
+FOR I=0 TO 1000
+  IF NOT P(I)
+    Q=I+I+3
+    FOR K=I+Q TO 1000 STEP Q:P(K)=1:NEXT
+    C=C+1
+  ENDIF
+NEXT
+? C

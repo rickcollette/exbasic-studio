@@ -1,0 +1,4 @@
+Name: Only one COMMON
+Test: compile-error
+Error: only one COMMON statement is allowed
+Error-pos: 3:6

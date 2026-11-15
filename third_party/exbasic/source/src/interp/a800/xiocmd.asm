@@ -1,0 +1,51 @@
+;
+; FastBasic - Fast basic interpreter for the Atari 8-bit computers
+; Copyright (C) 2017-2025 Daniel Serpell
+;
+; This program is free software; you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 2 of the License, or
+; (at your option) any later version.
+;
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+;
+; You should have received a copy of the GNU General Public License along
+; with this program.  If not, see <http://www.gnu.org/licenses/>
+;
+; In addition to the permissions in the GNU General Public License, the
+; authors give you unlimited permission to link the compiled version of
+; this file into combinations with other programs, and to distribute those
+; combinations without any restriction coming from the use of this file.
+; (The General Public License restrictions do apply in other respects; for
+; example, they cover modification of the file, and distribution when not
+; linked into a combine executable.)
+
+; XIO cmd, #chan, aux1, aux2, "spec" (the Atari BASIC order of the XIO
+; statement): swaps the command and the channel for EXE_XIO
+; ----------------------------------------------------------------------
+
+        .import         EXE_XIO, stack_l
+        .importzp       sptr
+
+        .segment        "RUNTIME"
+
+.proc   EXE_XIO_CMD ; XIO cmd, #chan, aux1, aux2, "spec": swap command and channel
+        pha
+        ldy     sptr
+        lda     stack_l+1, y
+        pha
+        lda     stack_l+2, y
+        sta     stack_l+1, y
+        pla
+        sta     stack_l+2, y
+        pla
+        jmp     EXE_XIO
+.endproc
+
+        .include "deftok.inc"
+        deftoken "XIO_CMD"
+
+; vi:syntax=asm_ca65

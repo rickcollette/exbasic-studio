@@ -1,0 +1,4 @@
+Name: Negative word DIM size
+Test: compile-error
+Error: array size out of range (0 to 16383)
+Error-pos: 2:9

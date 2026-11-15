@@ -1,0 +1,11 @@
+Name: RUN and COMMON pass variables between programs
+Test: run
+Program: run/runcmn2.bas
+Program: run/runcmn3.bas
+Output:
+FIRST: chaining
+missing file, ERR()=170
+SECOND: N=1234 X%=3.25 B=-7
+NAME$=HELLO FROM FIRST LEN(EMPTY$)=0
+array ok 100
+THIRD: different COMMON, N=0 X%=0

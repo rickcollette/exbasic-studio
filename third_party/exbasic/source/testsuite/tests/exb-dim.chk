@@ -1,0 +1,6 @@
+Name: Bad DIM size at runtime
+Test: run
+Output:
+Before
+
+ERROR- 9

@@ -1,0 +1,4 @@
+Name: Check parsing of HEX numbers (2)
+Test: compile-error
+Error: hex constant out of range
+Error-pos: 3:2

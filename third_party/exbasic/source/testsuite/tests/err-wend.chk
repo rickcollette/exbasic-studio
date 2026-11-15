@@ -1,0 +1,4 @@
+Name: Check proper parsing of WEND
+Test: compile-error
+Error: unclosed WHILE loop
+Error-pos: 2:0

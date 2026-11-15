@@ -1,0 +1,4 @@
+Name: RETURN outside FUNC
+Test: compile-error
+Error: RETURN outside FUNC
+Error-pos: 2:6

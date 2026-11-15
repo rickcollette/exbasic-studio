@@ -1,0 +1,4 @@
+Name: Check detection of ENDIF without IF inside FUNC
+Test: compile-error
+Error: missing IF
+Error-pos: 3:4

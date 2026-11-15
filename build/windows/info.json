@@ -1,0 +1,15 @@
+{
+	"fixed": {
+		"file_version": "0.1.0"
+	},
+	"info": {
+		"0409": {
+			"ProductVersion": "0.1.0",
+			"CompanyName": "exBASIC Studio Contributors",
+			"FileDescription": "A desktop IDE for exBASIC on Atari 8-bit systems",
+			"LegalCopyright": "(c) 2026 exBASIC Studio Contributors",
+			"ProductName": "exBASIC Studio",
+			"Comments": "Early-stage exBASIC development environment"
+		}
+	}
+}

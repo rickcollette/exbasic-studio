@@ -1,0 +1,4 @@
+Name: Multiple results in single value context
+Test: compile-error
+Error: FUNC 'DIVMOD' returns 2 values, use 'A, B = DIVMOD(...)'
+Error-pos: 1:4

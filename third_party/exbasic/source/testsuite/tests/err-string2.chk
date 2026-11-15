@@ -1,0 +1,4 @@
+Name: Check bad hex escape in string
+Test: compile-error
+Error: bad character code in string
+Error-pos: 2:14

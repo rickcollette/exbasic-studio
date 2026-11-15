@@ -1,0 +1,4 @@
+Name: THEN without a statement
+Test: compile-error
+Error: expected a statement after THEN
+Error-pos: 2:9

@@ -1,0 +1,4 @@
+Name: Check unclosed string
+Test: compile-error
+Error: unterminated string
+Error-pos: 2:3

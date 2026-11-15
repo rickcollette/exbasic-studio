@@ -1,0 +1,20 @@
+Name: String concatenation with +
+Test: run
+Output:
+HELLO, WORLD!
+HELLO-42-A
+12
+cmp ok
+both sides ok
+10
+<LLOH>
+<LLOH><LLOH>
+6
+[x][HELLO1]
+ab/cd
+1,2,3,
+255
+ABAB
+ABAB-ABAB
+ABAB-ABABq!
+ZY

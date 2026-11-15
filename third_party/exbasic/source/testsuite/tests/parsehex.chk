@@ -1,0 +1,4 @@
+Name: Check parsing of HEX numbers
+Test: compile-error
+Error: '(', left parenthesis
+Error-pos: 5:3

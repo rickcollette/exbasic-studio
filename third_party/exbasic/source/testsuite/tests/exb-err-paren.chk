@@ -1,0 +1,4 @@
+Name: Missing parenthesis
+Test: compile-error
+Error: missing ')' for this '('
+Error-pos: 2:6

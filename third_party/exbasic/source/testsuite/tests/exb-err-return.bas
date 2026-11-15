@@ -1,0 +1,3 @@
+FUNC F(A)
+  RETURN 1, 2
+ENDFUNC

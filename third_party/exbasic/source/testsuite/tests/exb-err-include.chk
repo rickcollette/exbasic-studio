@@ -1,0 +1,4 @@
+Name: Errors in INCLUDE files show the file and line
+Test: compile-error
+Error: missing
+Error-pos: 4:8

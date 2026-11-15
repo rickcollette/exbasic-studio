@@ -1,0 +1,17 @@
+Name: FOR loops with constant start, limit and step in machine code
+Test: run
+Options: -native:all
+Output:
+55 11
+55 0
+-2 7
+2 -7
+0 1
+1 1
+7 32767
+8 -32768
+8 -32768
+9 32767
+15 101
+10 21
+33 -32636

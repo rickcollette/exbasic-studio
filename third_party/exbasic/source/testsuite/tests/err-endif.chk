@@ -1,0 +1,4 @@
+Name: Check proper parsing of ENDIF
+Test: compile-error
+Error: unclosed IF
+Error-pos: 3:0

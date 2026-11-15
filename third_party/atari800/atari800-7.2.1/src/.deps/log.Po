@@ -1,0 +1,58 @@
+log.o: log.c config.h D:/Strawberry/c/x86_64-w64-mingw32/include/stdio.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/crtdefs.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_mac.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_secapi.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/vadefs.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/sdks/_mingw_directx.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/sdks/_mingw_ddk.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_print_push.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_off_t.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/swprintf.inl \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/sec_api/stdio_s.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_print_pop.h \
+ D:/Strawberry/c/lib/gcc/x86_64-w64-mingw32/8.3.0/include/stdarg.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/stdarg.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_stdarg.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/string.h \
+ D:/Strawberry/c/x86_64-w64-mingw32/include/sec_api/string_s.h log.h
+
+config.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/stdio.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/crtdefs.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_mac.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_secapi.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/vadefs.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/sdks/_mingw_directx.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/sdks/_mingw_ddk.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_print_push.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_off_t.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/swprintf.inl:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/sec_api/stdio_s.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_print_pop.h:
+
+D:/Strawberry/c/lib/gcc/x86_64-w64-mingw32/8.3.0/include/stdarg.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/stdarg.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/_mingw_stdarg.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/string.h:
+
+D:/Strawberry/c/x86_64-w64-mingw32/include/sec_api/string_s.h:
+
+log.h:

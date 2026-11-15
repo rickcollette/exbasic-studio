@@ -1,0 +1,4 @@
+Name: ELIF without IF
+Test: compile-error
+Error: ELIF without IF
+Error-pos: 3:4

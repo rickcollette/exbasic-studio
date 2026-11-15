@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=exBASIC Studio
+Comment=A desktop IDE for exBASIC on Atari 8-bit systems
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/exbasic-studio %u
+Terminal=false
+Type=Application
+Icon=exbasic-studio
+Categories=Utility;
+StartupWMClass=exbasic-studio
+
+ 
