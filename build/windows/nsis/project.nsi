@@ -35,18 +35,28 @@ Unicode true
     !define ARG_TOOLS_DIR "..\..\stage\windows-amd64\tools"
 !endif
 
+## The build passes the VERSION file as INFO_PRODUCTVERSION_FULL (for example
+## 1.0.0-rc.2). It is what Apps & features shows; wails_tools.nsh writes
+## INFO_PRODUCTVERSION there, so it must be the full version, not its default.
+!ifdef INFO_PRODUCTVERSION_FULL
+    !ifndef INFO_PRODUCTVERSION
+        !define INFO_PRODUCTVERSION "${INFO_PRODUCTVERSION_FULL}"
+    !endif
+!endif
+
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
 
-# The version information for this two must consist of 4 parts
-VIProductVersion "${INFO_PRODUCTVERSION}.0"
-VIFileVersion    "${INFO_PRODUCTVERSION}.0"
+# The binary version must be four numbers, so drop any pre-release suffix.
+!searchparse /noerrors "${INFO_PRODUCTVERSION}-" "" INFO_FILEVERSION "-"
+VIProductVersion "${INFO_FILEVERSION}.0"
+VIFileVersion    "${INFO_FILEVERSION}.0"
 
 VIAddVersionKey "CompanyName"     "${INFO_COMPANYNAME}"
 VIAddVersionKey "FileDescription" "${INFO_PRODUCTNAME} Installer"
 VIAddVersionKey "ProductVersion"  "${INFO_PRODUCTVERSION}"
-VIAddVersionKey "FileVersion"     "${INFO_PRODUCTVERSION}"
+VIAddVersionKey "FileVersion"     "${INFO_FILEVERSION}"
 VIAddVersionKey "LegalCopyright"  "${INFO_COPYRIGHT}"
 VIAddVersionKey "ProductName"     "${INFO_PRODUCTNAME}"
 
