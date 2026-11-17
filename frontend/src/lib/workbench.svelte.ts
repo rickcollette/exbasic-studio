@@ -179,7 +179,8 @@ export class Workbench {
 
   constructor() {
     this.editors.stateFactory = (path, text) => EditorState.create({ doc: text, extensions: editorExtensions(path, this.languageHost, this.editorCallbacks) });
-    this.editors.extraState = () => ({ emulatorProfile: this.emulator.profileId, breakpoints: this.debug.persistedBreakpoints, watches: this.debug.watches.map(watch => watch.expression) });
+    this.editors.extraState = () => ({ emulatorProfile: this.emulator.profileId, breakpoints: this.debug.persistedBreakpoints, watches: this.debug.watches.map(watch => watch.expression), keyboardJoystick: this.emulator.joystickMode });
+    this.emulator.onJoystickModeChanged = () => this.editors.schedulePersist();
     this.workspace.onProjectChanged = view => this.projectChanged(view);
     this.workspace.onFilesChanged = batch => {
       void this.editors.handleExternal(batch);
@@ -242,6 +243,7 @@ export class Workbench {
     const saved = this.workspace.saved;
     this.debug.restore(saved?.breakpoints ?? [], saved?.watches ?? []);
     if (saved?.emulatorProfile) this.emulator.select(saved.emulatorProfile);
+    this.emulator.joystickMode = saved?.keyboardJoystick ?? false;
     await this.editors.restore(saved, view.config.entry);
     void this.buildSymbolIndex();
     void this.git.autoRefresh();

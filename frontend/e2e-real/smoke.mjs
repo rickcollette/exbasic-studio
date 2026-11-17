@@ -75,6 +75,8 @@ try {
   check(output.includes('Build succeeded'), 'the build succeeds');
   check(output.includes('Atari800 started'), 'the emulator starts');
   check(fs.existsSync(path.join(project, 'build', 'TEST1.xex')), 'the executable is written to the project build folder');
+  await page.waitForSelector('.emulator-toolbar >> text=/H1:/', { timeout: 10000 }).catch(() => {});
+  check(await page.locator('text=/H1:/').count() > 0, 'the H1: host drive is mapped and shown');
 
   // Keyboard joystick and the Keyboard panel against the real helper.
   await page.getByRole('tab', { name: 'Keyboard' }).click();

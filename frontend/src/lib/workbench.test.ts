@@ -100,6 +100,20 @@ describe('project lifecycle', () => {
     expect(wb.debug.persistedBreakpoints).toEqual([{ path: 'src/main.bas', line: 2, enabled: true }]);
     expect(wb.debug.watches.map(watch => watch.expression)).toEqual(['SCORE']);
   });
+
+  it('remembers the keyboard joystick for each project', async () => {
+    await createProject();
+    expect(wb.emulator.joystickMode).toBe(false);
+    wb.emulator.setJoystickMode(true);
+    await vi.advanceTimersByTimeAsync(1000);
+    await wb.closeFolder();
+    await settle();
+    await createProject('other');
+    expect(wb.emulator.joystickMode).toBe(false);
+    await wb.openFolder('/home/tester/demo');
+    await settle();
+    expect(wb.emulator.joystickMode).toBe(true);
+  });
 });
 
 describe('editing', () => {

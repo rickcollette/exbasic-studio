@@ -59,4 +59,9 @@ export interface Workspace {
     "emulatorProfile": string;
     "breakpoints": Breakpoint[] | null;
     "watches": string[] | null;
+
+    /**
+     * KeyboardJoystick remembers whether the keyboard drives joystick 0.
+     */
+    "keyboardJoystick"?: boolean;
 }

@@ -50,6 +50,8 @@ type Workspace struct {
 	EmulatorProfile string       `json:"emulatorProfile"`
 	Breakpoints     []Breakpoint `json:"breakpoints"`
 	Watches         []string     `json:"watches"`
+	// KeyboardJoystick remembers whether the keyboard drives joystick 0.
+	KeyboardJoystick bool `json:"keyboardJoystick,omitempty"`
 }
 
 // Layout stores panel visibility and sizes in CSS pixels.

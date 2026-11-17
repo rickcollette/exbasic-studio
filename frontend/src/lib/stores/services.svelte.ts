@@ -198,6 +198,8 @@ export class EmulatorStore {
   private polling = false;
   /** Called when the emulated machine changed files in the workspace. */
   onWorkspaceChanged: (() => void) | undefined;
+  /** Called when the keyboard joystick is switched, so the project remembers it. */
+  onJoystickModeChanged: (() => void) | undefined;
 
   constructor(private ui: UIStore) {}
 
@@ -323,6 +325,7 @@ export class EmulatorStore {
   setJoystickMode(on: boolean): void {
     if (this.joystickMode === on) return;
     this.joystickMode = on;
+    this.onJoystickModeChanged?.();
     // Keys held when the mode changes would otherwise stay pressed.
     if (this.pad.clear()) this.sendJoystick();
     void this.releaseKeys();
