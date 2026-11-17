@@ -40,6 +40,7 @@ export interface MockNative extends Native {
 }
 
 const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+const BINARY_MARKER = '\u0000bin:';
 
 function defaultConfig(name: string): ProjectConfig {
   return {
@@ -241,6 +242,21 @@ export function createMockNative(): MockNative {
       if (rel === 'exbasic.project.json') throw new Error('use project settings to update the configuration');
       files().set(rel, content);
       recoveryByRoot.get(root)?.delete(rel);
+    },
+    // Binary files are kept as a NUL marker plus base64, so ReadFile refuses
+    // them as text the way the backend does.
+    ReadBinaryFile: (rel: string) => {
+      requireProject(); checkRel(rel);
+      const content = files().get(rel);
+      if (content === undefined) throw new Error(`open ${rel}: The system cannot find the file specified.`);
+      if (content.startsWith(BINARY_MARKER)) return content.slice(BINARY_MARKER.length);
+      return btoa(String.fromCharCode(...new TextEncoder().encode(content)));
+    },
+    SaveBinaryFile: (rel: string, data: string) => {
+      requireProject(); checkRel(rel);
+      if (rel === 'exbasic.project.json') throw new Error('use project settings to update the configuration');
+      atob(data);
+      files().set(rel, BINARY_MARKER + data);
     },
     CreateFolder: (rel: string) => { requireProject(); checkRel(rel); files().set(`${rel}/.keep`, ''); return view(); },
     ImportProjectPaths: (destination: string, paths: string[]) => {

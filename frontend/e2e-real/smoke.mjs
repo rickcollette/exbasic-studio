@@ -65,6 +65,26 @@ try {
   await page.waitForTimeout(700);
   check(fs.readFileSync(path.join(project, 'basfile.inc'), 'utf8') === 'REM edited', 'saving writes the file in the project folder');
 
+  // Sprite Studio: a binary PMG bank is read, edited, saved and exported as PNG.
+  fs.writeFileSync(path.join(project, 'ENEMY.PMG'), Buffer.from([0x18, 0x3c, 0x7e, 0xff, 0xdb, 0x7e, 0x24, 0x42]));
+  fs.writeFileSync(path.join(project, 'enemy_index.json'), JSON.stringify({ bat: { offset: 0, length: 8, width: 8, height: 8 } }, null, 2) + '\n');
+  await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: 'Sprite Studio', exact: true }).click();
+  await page.getByRole('button', { name: 'ENEMY.PMG' }).click({ timeout: 10000 });
+  await page.waitForSelector('.frame-list .frame-name:has-text("bat")', { timeout: 10000 });
+  check(true, 'a PMG bank opens in the Sprite Studio with its index');
+  const pixels = await page.locator('canvas.pixel-canvas').boundingBox();
+  await page.mouse.click(pixels.x + pixels.width / 16, pixels.y + pixels.height / 16);
+  await page.keyboard.press('Control+S');
+  await page.waitForTimeout(700);
+  check(fs.readFileSync(path.join(project, 'ENEMY.PMG')).equals(Buffer.from([0x98, 0x3c, 0x7e, 0xff, 0xdb, 0x7e, 0x24, 0x42])), 'drawing a pixel and saving rewrites the PMG bank on disk');
+  await page.getByRole('button', { name: 'PNG', exact: true }).click();
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  await page.waitForTimeout(700);
+  const png = path.join(project, 'ENEMY_sheet.png');
+  check(fs.existsSync(png) && fs.readFileSync(png).subarray(1, 4).toString() === 'PNG', 'the frames export as a PNG sheet');
+  await page.keyboard.press('Control+W');
+  await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: 'Explorer', exact: true }).click();
+
   // Run: the trust prompt appears, then the build runs and the emulator starts.
   await page.locator('[role=treeitem]', { hasText: 'new.bas' }).click();
   await page.keyboard.press('Control+F5');

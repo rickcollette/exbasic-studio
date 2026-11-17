@@ -453,6 +453,14 @@ export function OpenProject(path: string): $CancellablePromise<project$0.View> {
     return $Call.ByID(1394087891, path);
 }
 
+/**
+ * ReadBinaryFile returns a workspace file of any type, base64 encoded. The
+ * sprite tools use it for PMG banks, fonts and PNG sheets.
+ */
+export function ReadBinaryFile(rel: string): $CancellablePromise<string> {
+    return $Call.ByID(3059910013, rel);
+}
+
 export function ReadFile(rel: string): $CancellablePromise<string> {
     return $Call.ByID(3270735124, rel);
 }
@@ -490,6 +498,13 @@ export function RevokeWorkspaceTrust(): $CancellablePromise<$models.TrustInfo> {
  */
 export function RunningOperations(): $CancellablePromise<operations$0.Info[] | null> {
     return $Call.ByID(3903906587);
+}
+
+/**
+ * SaveBinaryFile writes base64-encoded bytes to a workspace file atomically.
+ */
+export function SaveBinaryFile(rel: string, data: string): $CancellablePromise<void> {
+    return $Call.ByID(2724212796, rel, data);
 }
 
 /**

@@ -486,6 +486,45 @@ func (p *Project) Save(rel, content string) error {
 	return atomicWrite(path, []byte(content))
 }
 
+// MaxBinaryBytes bounds the binary files the sprite tools read and write
+// (PMG banks, fonts, PNG sheets).
+const MaxBinaryBytes int64 = 8 << 20
+
+// ReadBinary returns the bytes of a regular file inside the workspace.
+func (p *Project) ReadBinary(rel string) ([]byte, error) {
+	path, err := p.Resolve(rel)
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, errors.New("not a regular file")
+	}
+	if info.Size() > MaxBinaryBytes {
+		return nil, errors.New("file exceeds 8 MiB")
+	}
+	return os.ReadFile(path)
+}
+
+// SaveBinary writes bytes to a file inside the workspace atomically,
+// creating parent folders as needed.
+func (p *Project) SaveBinary(rel string, data []byte) error {
+	if int64(len(data)) > MaxBinaryBytes {
+		return errors.New("maximum file size is 8 MiB")
+	}
+	path, err := p.Resolve(rel)
+	if err != nil {
+		return err
+	}
+	if path == filepath.Join(p.Root, ConfigName) {
+		return errors.New("use project settings to update the configuration")
+	}
+	return atomicWrite(path, data)
+}
+
 // CreateDirectory creates a folder inside the project workspace.
 func (p *Project) CreateDirectory(rel string) error {
 	path, err := p.Resolve(rel)

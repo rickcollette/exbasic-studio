@@ -1,27 +1,31 @@
 <script lang="ts">
   // Editor tabs, breadcrumbs and the content area: the text editor, the
-  // emulator screen, the merge conflict view or the welcome page.
+  // Sprite Studio, the emulator screen, the merge conflict view or the
+  // welcome page.
   import { wb } from '../../lib/workbench.svelte';
   import { EMULATOR_TAB } from '../../lib/stores/editors.svelte';
   import { fileIcon, baseName } from '../../lib/stores/workspace.svelte';
   import EditorPane from './EditorPane.svelte';
   import EmulatorView from './EmulatorView.svelte';
   import ConflictView from './ConflictView.svelte';
+  import SpriteStudio from './SpriteStudio.svelte';
 
   const editors = wb.editors;
   const showEmulator = $derived(editors.active === EMULATOR_TAB);
   const tab = $derived(editors.activeTab);
+  const sprite = $derived(wb.sprites.doc(editors.active));
   let tabList = $state<HTMLElement>();
 
   $effect(() => { wb.emulator.setVisible(showEmulator); });
 
   /** All tab ids in display order, for arrow-key navigation. */
-  const order = $derived([...editors.tabs.map(item => item.path), ...(editors.emulatorOpen ? [EMULATOR_TAB] : [])]);
+  const order = $derived([...editors.tabs.map(item => item.path), ...wb.sprites.docs.map(doc => doc.id), ...(editors.emulatorOpen ? [EMULATOR_TAB] : [])]);
 
   function activate(id: string) { if (id === EMULATOR_TAB) editors.openEmulator(); else editors.activate(id); }
 
   async function closeTab(id: string) {
-    if (id === EMULATOR_TAB) { await wb.emulator.stop(); editors.closeEmulator(); } else await editors.close(id);
+    const doc = wb.sprites.doc(id);
+    if (id === EMULATOR_TAB) { await wb.emulator.stop(); editors.closeEmulator(); } else if (doc) await wb.sprites.close(doc); else await editors.close(id);
   }
 
   function tabKey(event: KeyboardEvent, id: string) {
@@ -55,6 +59,17 @@
         <button class="close-tab" tabindex="-1" aria-hidden="true" title={`Close ${baseName(item.path)}`} aria-label={`Close ${baseName(item.path)}`} onclick={() => closeTab(item.path)}><i aria-hidden="true" class="codicon codicon-close"></i></button>
       </div>
     {/each}
+    {#each wb.sprites.docs as doc (doc.id)}
+      <div class="editor-tab" role="presentation" class:active={editors.active === doc.id} class:dirty={doc.dirty}>
+        <button role="tab" id={`tab-${doc.id}`} aria-selected={editors.active === doc.id} aria-controls="editor-content" tabindex={editors.active === doc.id ? 0 : -1} title={`${doc.path} (Sprite Studio)`}
+          onclick={() => activate(doc.id)} onkeydown={event => tabKey(event, doc.id)} onauxclick={event => middleClick(event, doc.id)}>
+          <i aria-hidden="true" class="codicon codicon-paintcan"></i><span>{baseName(doc.path)}</span>
+          {#if doc.external}<i aria-hidden="true" class="codicon codicon-warning changed" title="Changed on disk"></i>{/if}
+          {#if doc.dirty}<b class="dirty-dot" aria-label="unsaved changes">●</b>{/if}
+        </button>
+        <button class="close-tab" tabindex="-1" aria-hidden="true" title={`Close ${baseName(doc.path)}`} aria-label={`Close ${baseName(doc.path)}`} onclick={() => closeTab(doc.id)}><i aria-hidden="true" class="codicon codicon-close"></i></button>
+      </div>
+    {/each}
     {#if editors.emulatorOpen}
       <div class="editor-tab" role="presentation" class:active={showEmulator}>
         <button role="tab" id="tab-emulator" aria-selected={showEmulator} aria-controls="editor-content" tabindex={showEmulator ? 0 : -1} onclick={() => activate(EMULATOR_TAB)} onkeydown={event => tabKey(event, EMULATOR_TAB)}>
@@ -73,6 +88,7 @@
 
 <div class="breadcrumbs" aria-label="Location">
   {#if showEmulator}<i aria-hidden="true" class="codicon codicon-device-desktop"></i><span>Atari800</span>
+  {:else if sprite}<i aria-hidden="true" class="codicon codicon-paintcan"></i>{#each sprite.path.split('/') as part, index}{#if index > 0}<i aria-hidden="true" class="codicon codicon-chevron-right"></i>{/if}<span>{part}</span>{/each}<span>(Sprite Studio)</span>
   {:else if tab}{#each tab.path.split('/') as part, index}{#if index > 0}<i aria-hidden="true" class="codicon codicon-chevron-right"></i>{/if}<span>{part}</span>{/each}
   {:else}<span>exBASIC Studio</span>{/if}
 </div>
@@ -90,13 +106,15 @@
   </div>
 {/if}
 
-<div class="editor-content" id="editor-content" role="tabpanel" aria-labelledby={showEmulator ? 'tab-emulator' : tab ? `tab-${tab.path}` : undefined}>
+<div class="editor-content" id="editor-content" role="tabpanel" aria-labelledby={showEmulator ? 'tab-emulator' : sprite ? `tab-${sprite.id}` : tab ? `tab-${tab.path}` : undefined}>
   <!-- The text editor stays mounted so tab switches keep their state. -->
   <div class="pane" class:hidden={!tab || showEmulator || !!wb.git.conflict}><EditorPane /></div>
   {#if wb.git.conflict && !showEmulator}
     <div class="pane"><ConflictView /></div>
   {:else if showEmulator}
     <div class="pane"><EmulatorView /></div>
+  {:else if sprite}
+    {#key sprite.id}<div class="pane"><SpriteStudio doc={sprite} /></div>{/key}
   {:else if !tab}
     <div class="pane welcome">
       <img src="/exbasic-logo-icon.png" alt="" draggable="false" />

@@ -14,6 +14,9 @@ export function fileIcon(path: string): string {
   const lower = path.toLowerCase();
   if (lower.endsWith('.bas')) return 'symbol-method';
   if (lower.endsWith('.asm') || lower.endsWith('.s')) return 'symbol-namespace';
+  if (lower.endsWith('.sprites.json')) return 'paintcan';
+  if (lower.endsWith('.pmg')) return 'symbol-color';
+  if (lower.endsWith('.png')) return 'file-media';
   if (lower.endsWith('.json')) return 'json';
   if (lower.endsWith('.md')) return 'markdown';
   if (lower.endsWith('.atr')) return 'atari-folder';

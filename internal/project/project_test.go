@@ -223,3 +223,33 @@ func TestImportPathsCopiesFilesAndFoldersWithoutOverwriting(t *testing.T) {
 		t.Fatalf("duplicate import was not rejected: %v", err)
 	}
 }
+
+func TestBinaryReadAndSave(t *testing.T) {
+	p, err := Create(t.TempDir(), "binary")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte{0x00, 0xff, 0x18, 0x3c, 0x00, 0x7e}
+	if err := p.SaveBinary("game/assets/SPRITES.PMG", data); err != nil {
+		t.Fatal(err)
+	}
+	got, err := p.ReadBinary("game/assets/SPRITES.PMG")
+	if err != nil || string(got) != string(data) {
+		t.Fatalf("round trip: %v %v", got, err)
+	}
+	if _, err := p.Read("game/assets/SPRITES.PMG"); err == nil {
+		t.Fatal("binary data must not open as text")
+	}
+	if err := p.SaveBinary("../outside.bin", data); err == nil {
+		t.Fatal("wrote outside the workspace")
+	}
+	if err := p.SaveBinary(ConfigName, data); err == nil {
+		t.Fatal("overwrote the project configuration")
+	}
+	if err := p.SaveBinary("big.bin", make([]byte, MaxBinaryBytes+1)); err == nil {
+		t.Fatal("accepted an oversized file")
+	}
+	if _, err := p.ReadBinary("game/assets"); err == nil {
+		t.Fatal("read a directory as a file")
+	}
+}

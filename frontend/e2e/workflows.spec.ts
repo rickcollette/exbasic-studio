@@ -250,6 +250,57 @@ test('merge conflict: three-way view and resolution', async ({ page }) => {
   await expect(page.locator('.notice.merge')).toHaveCount(0);
 });
 
+test('sprite studio: draw, undo, save, generate and open as JSON', async ({ page }) => {
+  await start(page);
+  await createProject(page);
+  const frames = { idle_0: ['........', '..FFFF..', '.SSSSSF.', 'BB....BB'], idle_1: ['..HH....', '..F.FF..', 'FSSSSSFF', '.BB..BB.'] };
+  const sheet = {
+    format: 'exbasic-sprites', version: 1, width: 8, height: 4, planes: 2,
+    palette: [
+      { symbol: '.', name: 'transparent', color: '#0a0f1a', planes: [] }, { symbol: 'H', name: 'hat', color: '#c1802c', planes: [0] },
+      { symbol: 'B', name: 'boots', color: '#c1802c', planes: [0] }, { symbol: 'S', name: 'shirt', color: '#237eae', planes: [1] },
+      { symbol: 'F', name: 'skin', color: '#eeac70', planes: [0, 1] },
+    ],
+    source: 'hero_pixels.json', outputs: { bank: 'HERO.PMG', index: 'hero_index.json', indexStyle: 'planes' },
+  };
+  await page.evaluate(([f, s]) => {
+    const mock = (window as any).__mockNative;
+    mock.externalWrite('gfx/hero_pixels.json', JSON.stringify(f));
+    mock.externalWrite('gfx/hero.sprites.json', JSON.stringify(s));
+  }, [frames, sheet]);
+
+  await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: 'Sprite Studio', exact: true }).click();
+  await page.getByRole('button', { name: 'gfx/hero.sprites.json' }).click();
+  const tab = page.locator('.editor-tab.active');
+  await expect(tab).toContainText('hero.sprites.json');
+  await expect(page.locator('.frame-list .frame-name')).toHaveText(['idle_0', 'idle_1']);
+
+  // Draw the top-left pixel with the hat colour.
+  await page.getByRole('button', { name: 'Draw with hat' }).click();
+  const canvas = page.locator('canvas.pixel-canvas');
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 16, box.y + box.height / 8);
+  await expect(tab.getByLabel('unsaved changes')).toBeVisible();
+  await page.keyboard.press('Control+Z');
+  await expect(tab.getByLabel('unsaved changes')).toHaveCount(0);
+  await page.keyboard.press('Control+Y');
+  await expect(tab.getByLabel('unsaved changes')).toBeVisible();
+  await page.keyboard.press('Control+S');
+  await expect(tab.getByLabel('unsaved changes')).toHaveCount(0);
+  const saved = await page.evaluate(() => (window as any).__mockNative.studio.ReadFile('gfx/hero_pixels.json'));
+  expect(JSON.parse(saved).idle_0[0]).toBe('H.......');
+
+  await page.getByRole('button', { name: 'Generate' }).click();
+  await expect(page.locator('.status-message')).toContainText('Generated 2 files');
+  const bank = await page.evaluate(() => (window as any).__mockNative.studio.ReadBinaryFile('gfx/HERO.PMG'));
+  expect(Buffer.from(bank, 'base64')).toHaveLength(16);
+  await expectAccessible(page, 'the Sprite Studio');
+
+  await page.getByRole('button', { name: 'Open as JSON text' }).click();
+  await expect(page.getByRole('tab', { name: /hero\.sprites\.json/ }).first()).toBeVisible();
+  await expect(page.locator('.cm-content')).toContainText('"format": "exbasic-sprites"');
+});
+
 test('ATR explorer: browse, create a folder, rename and delete with confirmation', async ({ page }) => {
   await start(page);
   await createProject(page);
@@ -401,7 +452,7 @@ test.describe('accessibility', () => {
   test('every side bar view', async ({ page }) => {
     await start(page);
     await createProject(page);
-    for (const view of ['Search', 'ATR Explorer', 'Source Control', 'Run and Debug', 'Atari800 Emulator', 'exBASIC Manual', 'Settings']) {
+    for (const view of ['Search', 'ATR Explorer', 'Source Control', 'Run and Debug', 'Atari800 Emulator', 'Sprite Studio', 'exBASIC Manual', 'Settings']) {
       await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: view, exact: true }).click();
       await expect(page.locator('.sidebar-title')).toHaveText(view);
       await expectAccessible(page, `the ${view} view`);

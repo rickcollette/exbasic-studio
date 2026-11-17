@@ -31,6 +31,9 @@
       <span>Ln {wb.editors.cursor.line}, Col {wb.editors.cursor.column}</span><span>Spaces: 2</span><span>UTF-8</span><span>{lineEnding}</span>
     {:else if wb.editors.active === EMULATOR_TAB}
       <span>Frame {wb.emulator.frame}</span>
+    {:else if wb.sprites.active}
+      {@const sheet = wb.sprites.active.sheet}
+      <span>Frame {wb.sprites.active.frame + 1} of {sheet.frames.length}</span><span>{sheet.width}x{sheet.height}, {sheet.planes} plane{sheet.planes === 1 ? '' : 's'}</span>
     {/if}
     <span>{wb.workspace.project?.config.target ?? 'Atari 8-bit'}</span>
     <span title={`exBASIC Studio ${wb.workspace.env?.version ?? ''}`}>{wb.workspace.env?.version ?? ''}</span>

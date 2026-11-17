@@ -24,6 +24,24 @@ export interface RevealRequest { path: string; line: number; column: number; tok
 
 export const EMULATOR_TAB = '@atari800';
 
+/**
+ * Editors that are not text documents (the Sprite Studio). Their ids start
+ * with "@" and the owning store handles loading, saving and closing; the
+ * editors store only orders, persists and restores them.
+ */
+export interface VirtualTabHost {
+  /** Open tab ids, in display order. */
+  ids(): string[];
+  open(id: string): Promise<boolean>;
+  /** Ids with unsaved changes. */
+  dirty(): string[];
+  /** The file shown for an id, for prompts and the explorer selection. */
+  path(id: string): string;
+  save(id: string): Promise<boolean>;
+}
+
+export function isVirtualTab(id: string): boolean { return id.startsWith('@') && id !== EMULATOR_TAB; }
+
 /** Diagnostics grouped by where they came from. */
 /**
  * A problem inside an included file is shown in that file. The program being
@@ -127,6 +145,8 @@ export class EditorsStore {
   stateFactory: (path: string, text: string) => EditorState = (_path, text) => EditorState.create({ doc: text });
   /** Extra per-workspace state (breakpoints, watches) merged when persisting. */
   extraState: () => Partial<WorkspaceState> = () => ({});
+  /** Non-text editors; installed by the workbench. */
+  virtual: VirtualTabHost = { ids: () => [], open: async () => false, dirty: () => [], path: id => id, save: async () => false };
 
   private states = new Map<string, EditorState>();
   private saved = new Map<string, Text>();
@@ -232,7 +252,8 @@ export class EditorsStore {
   activate(path: string): void {
     if (path !== this.active) this.focusLost();
     this.active = path;
-    if (path && path !== EMULATOR_TAB) {
+    if (isVirtualTab(path)) this.workspace.selected = this.virtual.path(path);
+    else if (path && path !== EMULATOR_TAB) {
       this.workspace.selected = path;
       this.record(path);
     }
@@ -245,7 +266,7 @@ export class EditorsStore {
 
   closeEmulator(): void {
     this.emulatorOpen = false;
-    if (this.active === EMULATOR_TAB) this.active = this.tabs.at(-1)?.path ?? '';
+    if (this.active === EMULATOR_TAB) this.active = this.tabs.at(-1)?.path ?? this.virtual.ids().at(-1) ?? '';
   }
 
   /** Closes a tab, asking what to do with unsaved changes. */
@@ -279,7 +300,7 @@ export class EditorsStore {
     void native().studio.DiscardRecovery(path).catch(() => {});
     if (this.active === path) {
       const next = this.tabs[Math.min(index, this.tabs.length - 1)];
-      this.active = next?.path ?? (this.emulatorOpen ? EMULATOR_TAB : '');
+      this.active = next?.path ?? this.virtual.ids()[0] ?? (this.emulatorOpen ? EMULATOR_TAB : '');
       if (!next) this.splitOpen = false;
     }
     this.schedulePersist();
@@ -290,12 +311,12 @@ export class EditorsStore {
    * replaced. Resolves false when the user cancels.
    */
   async confirmDiscardAll(): Promise<boolean> {
-    const dirty = this.dirtyTabs;
+    const dirty = [...this.dirtyTabs.map(tab => tab.path), ...this.virtual.dirty().map(id => this.virtual.path(id))];
     if (!dirty.length) return true;
     const answer = await this.ui.choose({
       title: 'Save changes?',
       message: `${dirty.length} file${dirty.length === 1 ? ' has' : 's have'} unsaved changes.`,
-      detail: dirty.map(tab => tab.path).join('\n'),
+      detail: dirty.join('\n'),
       buttons: [{ value: 'cancel', label: 'Cancel' }, { value: 'discard', label: "Don't Save", kind: 'danger' }, { value: 'save', label: 'Save All', kind: 'primary' }],
       cancelValue: 'cancel',
     });
@@ -340,6 +361,7 @@ export class EditorsStore {
   async saveAll(): Promise<boolean> {
     let ok = true;
     for (const tab of this.dirtyTabs) ok = (await this.save(tab.path)) && ok;
+    for (const id of this.virtual.dirty()) ok = (await this.virtual.save(id)) && ok;
     return ok;
   }
 
@@ -521,7 +543,7 @@ export class EditorsStore {
     if (!this.workspace.project) return;
     this.persistTimer = setTimeout(() => {
       const state: WorkspaceState = {
-        tabs: this.tabs.map(tab => tab.path),
+        tabs: [...this.tabs.map(tab => tab.path), ...this.virtual.ids()],
         activeEditor: this.active === EMULATOR_TAB ? '' : this.active,
         emulatorProfile: '', breakpoints: [], watches: [],
         ...this.extraState(),
@@ -532,9 +554,12 @@ export class EditorsStore {
 
   /** Reopens the tabs remembered for this workspace. */
   async restore(saved: WorkspaceState | null, fallback: string): Promise<void> {
-    const wanted = (saved?.tabs ?? []).filter(path => this.workspace.hasFile(path));
-    for (const path of wanted) await this.open(path);
-    const active = saved?.activeEditor && this.tab(saved.activeEditor) ? saved.activeEditor : wanted.at(-1);
+    const wanted = (saved?.tabs ?? []).filter(path => this.workspace.hasFile(isVirtualTab(path) ? this.virtual.path(path) : path));
+    for (const path of wanted) {
+      if (isVirtualTab(path)) await this.virtual.open(path); else await this.open(path);
+    }
+    const isOpen = (id: string) => !!this.tab(id) || this.virtual.ids().includes(id);
+    const active = saved?.activeEditor && isOpen(saved.activeEditor) ? saved.activeEditor : wanted.filter(isOpen).at(-1);
     if (active) this.activate(active);
     else if (fallback && this.workspace.hasFile(fallback)) await this.open(fallback);
   }

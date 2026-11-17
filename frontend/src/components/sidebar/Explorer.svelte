@@ -46,7 +46,7 @@
   function rowKey(event: KeyboardEvent, path: string, directory: boolean) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      if (directory) wb.workspace.toggleFolder(path); else void wb.editors.open(path);
+      if (directory) wb.workspace.toggleFolder(path); else void wb.openFile(path);
     } else if (event.key === 'Delete') { event.preventDefault(); wb.workspace.selected = path; void wb.deleteSelected(); }
     else if (event.key === 'F2') { event.preventDefault(); event.stopPropagation(); wb.workspace.selected = path; void wb.renameSelected(); }
   }
@@ -83,7 +83,7 @@
         class="tree-row" class:active={wb.editors.active === entry.path} style={`padding-left:${8 + entry.depth * 14}px`} title={entry.path}
         id={entry.directory ? `project-drop-${encodeURIComponent(entry.path)}` : undefined} data-file-drop-target={entry.directory ? '' : undefined} draggable="true"
         ondragstart={event => startDrag(event, entry.path)} ondragover={event => event.preventDefault()} ondrop={event => drop(event, entry.directory ? entry.path : parentOf(entry.path))}
-        onclick={() => { wb.workspace.selected = entry.path; if (entry.directory) wb.workspace.toggleFolder(entry.path); else void wb.editors.open(entry.path); }}
+        onclick={() => { wb.workspace.selected = entry.path; if (entry.directory) wb.workspace.toggleFolder(entry.path); else void wb.openFile(entry.path); }}
         onkeydown={event => rowKey(event, entry.path, entry.directory)}>
         {#if entry.directory}
           <i aria-hidden="true" class={`codicon codicon-chevron-${wb.workspace.collapsed.has(entry.path) ? 'right' : 'down'}`}></i>

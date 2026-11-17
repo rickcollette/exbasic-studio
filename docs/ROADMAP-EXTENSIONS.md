@@ -9,6 +9,11 @@ The alpha contained a manifest *discovery* stub (it listed manifests and ran
 nothing). It was removed for 1.0 rather than shipped as an unfinished
 control.
 
+The Sprite Studio ([SPRITES.md](SPRITES.md)) is a built-in, first-party
+feature, not an extension: it runs no third-party code and needs none of the
+machinery below. It is a reference for what a sprite or asset extension
+should be able to do.
+
 ## Goals
 
 - Add language-adjacent tools without forking the application: formatters,

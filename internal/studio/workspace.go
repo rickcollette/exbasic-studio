@@ -1,6 +1,7 @@
 package studio
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -194,6 +195,33 @@ func (s *StudioService) SaveFile(rel, content string) error {
 		s.log.Warn("clear recovery copy of %s: %v", rel, clearErr)
 	}
 	return nil
+}
+
+// ReadBinaryFile returns a workspace file of any type, base64 encoded. The
+// sprite tools use it for PMG banks, fonts and PNG sheets.
+func (s *StudioService) ReadBinaryFile(rel string) (string, error) {
+	p, err := s.current()
+	if err != nil {
+		return "", err
+	}
+	data, err := p.ReadBinary(rel)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+// SaveBinaryFile writes base64-encoded bytes to a workspace file atomically.
+func (s *StudioService) SaveBinaryFile(rel, data string) error {
+	p, err := s.current()
+	if err != nil {
+		return err
+	}
+	decoded, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return fmt.Errorf("invalid binary data: %w", err)
+	}
+	return s.withEOSHostMutation([]string{rel}, func() error { return p.SaveBinary(rel, decoded) })
 }
 
 func (s *StudioService) CreateFolder(rel string) (project.View, error) {

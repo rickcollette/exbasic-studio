@@ -10,6 +10,8 @@ import { EditorsStore, ProblemsStore, EMULATOR_TAB } from './stores/editors.svel
 import { OperationsStore } from './stores/operations.svelte';
 import { AtrStore, EmulatorStore, GitStore, ManualStore, TerminalStore } from './stores/services.svelte';
 import { DebugStore } from './stores/debug.svelte';
+import { SpritesStore } from './stores/sprites.svelte';
+import { isSpritePath } from './sprites/model';
 import { editorExtensions, type EditorCallbacks } from './editor/setup';
 import { scanSymbols, findDefinition, wordAt, includeAt, isExbasicSource, type DocSymbol, type LanguageHost } from './language';
 
@@ -21,7 +23,8 @@ export type CommandID =
   | 'build' | 'run' | 'build.cancel' | 'debug.start' | 'debug.continue' | 'debug.pause' | 'debug.stepLine' | 'debug.stepInstruction'
   | 'debug.stepOver' | 'debug.stepOut' | 'debug.stop' | 'debug.toggleBreakpoint'
   | 'emulator.open' | 'emulator.start' | 'emulator.restart' | 'emulator.stop' | 'emulator.joystick'
-  | 'terminal.new' | 'terminal.focus' | 'terminal.kill' | 'claude.open' | 'manual' | 'settings' | 'trust' | 'support.bundle';
+  | 'terminal.new' | 'terminal.focus' | 'terminal.kill' | 'claude.open' | 'manual' | 'settings' | 'trust' | 'support.bundle'
+  | 'view.sprites' | 'sprites.new' | 'sprites.merge' | 'sprites.open' | 'sprites.openText' | 'sprites.generate';
 
 export interface Command { id: CommandID; label: string; shortcut?: string; icon?: string }
 
@@ -77,6 +80,12 @@ export const commands: Command[] = [
   { id: 'terminal.focus', label: 'Terminal: Focus Terminal', shortcut: 'Ctrl+`', icon: 'terminal' },
   { id: 'terminal.kill', label: 'Terminal: Kill Active Terminal', icon: 'trash' },
   { id: 'claude.open', label: 'Claude Code: Open in Terminal', icon: 'sparkle' },
+  { id: 'view.sprites', label: 'View: Show Sprite Studio', icon: 'paintcan' },
+  { id: 'sprites.new', label: 'Sprites: New Sprite Sheet…', icon: 'new-file' },
+  { id: 'sprites.merge', label: 'Sprites: Merge Sprite Sheets…', icon: 'merge' },
+  { id: 'sprites.open', label: 'Sprites: Open in Sprite Studio', icon: 'paintcan' },
+  { id: 'sprites.openText', label: 'Sprites: Open Sheet as JSON Text', icon: 'json' },
+  { id: 'sprites.generate', label: 'Sprites: Generate PMG Bank and Outputs', icon: 'run-all' },
   { id: 'manual', label: 'Help: Open exBASIC Manual', shortcut: 'F1', icon: 'book' },
   { id: 'settings', label: 'Preferences: Open Settings', shortcut: 'Ctrl+,', icon: 'gear' },
   { id: 'trust', label: 'Workspace: Manage Folder Trust', icon: 'shield' },
@@ -87,9 +96,10 @@ export const commands: Command[] = [
 export const menus: Record<string, CommandID[]> = {
   File: ['file.new', 'file.newFolder', 'file.open', 'file.close', 'file.save', 'file.saveAll', 'editor.close'],
   Edit: ['editor.undo', 'editor.redo', 'editor.find', 'editor.selectAll', 'palette'],
-  View: ['view.explorer', 'view.search', 'view.atr', 'view.source', 'view.run', 'view.sidebar', 'view.panel', 'view.problems', 'view.output', 'view.keyboard', 'editor.split'],
+  View: ['view.explorer', 'view.search', 'view.atr', 'view.source', 'view.run', 'view.sprites', 'view.sidebar', 'view.panel', 'view.problems', 'view.output', 'view.keyboard', 'editor.split'],
   Go: ['nav.back', 'nav.forward', 'quickOpen', 'symbols', 'editor.definition'],
   Run: ['debug.start', 'run', 'build', 'build.cancel', 'debug.stop', 'debug.toggleBreakpoint', 'emulator.open', 'emulator.start', 'emulator.restart', 'emulator.stop', 'emulator.joystick'],
+  Sprites: ['sprites.new', 'sprites.open', 'sprites.openText', 'sprites.generate', 'sprites.merge'],
   Terminal: ['terminal.new', 'terminal.focus', 'terminal.kill', 'claude.open'],
   Help: ['manual', 'settings', 'trust', 'support.bundle'],
 };
@@ -113,6 +123,7 @@ export class Workbench {
   atr = new AtrStore(this.ui, this.workspace);
   manual = new ManualStore(this.ui);
   debug = new DebugStore(this.ui, this.workspace, this.editors, this.emulator);
+  sprites = new SpritesStore(this.ui, this.workspace, this.editors);
 
   search = $state<{ query: string; results: SearchResult[]; ran: boolean }>({ query: '', results: [], ran: false });
   palette = $state<{ open: boolean; mode: PaletteMode; query: string; index: number }>({ open: false, mode: 'commands', query: '', index: 0 });
@@ -181,9 +192,11 @@ export class Workbench {
     this.editors.stateFactory = (path, text) => EditorState.create({ doc: text, extensions: editorExtensions(path, this.languageHost, this.editorCallbacks) });
     this.editors.extraState = () => ({ emulatorProfile: this.emulator.profileId, breakpoints: this.debug.persistedBreakpoints, watches: this.debug.watches.map(watch => watch.expression), keyboardJoystick: this.emulator.joystickMode });
     this.emulator.onJoystickModeChanged = () => this.editors.schedulePersist();
+    this.editors.virtual = this.sprites.host;
     this.workspace.onProjectChanged = view => this.projectChanged(view);
     this.workspace.onFilesChanged = batch => {
       void this.editors.handleExternal(batch);
+      void this.sprites.handleExternal(batch);
       for (const change of batch.changes) {
         if (change.directory || !isExbasicSource(change.path)) continue;
         if (change.kind === 'remove') this.symbolIndex.delete(change.path);
@@ -232,6 +245,7 @@ export class Workbench {
   private async projectChanged(view: ProjectView | null): Promise<void> {
     await this.debug.end(true);
     this.editors.reset();
+    this.sprites.reset();
     this.terminal.reset();
     this.git.reset();
     this.symbolIndex.clear();
@@ -268,6 +282,31 @@ export class Workbench {
   async closeFolder(): Promise<void> {
     if (!this.workspace.project || !(await this.editors.confirmDiscardAll())) return;
     await this.workspace.close();
+  }
+
+  /** Opens a file in the editor that suits it: sprite files go to the Sprite Studio. */
+  async openFile(path: string): Promise<boolean> {
+    if (isSpritePath(path)) return this.sprites.open(path);
+    return this.editors.open(path);
+  }
+
+  /** The file behind the active editor or the explorer selection. */
+  get spriteCandidate(): string {
+    const active = this.editors.active;
+    if (this.sprites.doc(active)) return '';
+    if (this.editors.activeTab && /\.json$/i.test(active)) return active;
+    const selected = this.workspace.selected;
+    return selected && this.workspace.hasFile(selected) && (/\.json$/i.test(selected) || isSpritePath(selected)) ? selected : '';
+  }
+
+  /** Opens the active sprite sheet's JSON in the text editor. */
+  async openSpriteText(): Promise<void> {
+    const doc = this.sprites.active;
+    if (!doc) return;
+    const path = doc.sheetPath ?? doc.framesPath ?? doc.bank?.index;
+    if (!path) { this.ui.status = 'This sprite has no JSON file yet: save it as a sheet first'; return; }
+    if (doc.dirty && !(await this.sprites.save(doc))) return;
+    await this.editors.open(path);
   }
 
   // ---- Symbols and navigation -----------------------------------------------
@@ -443,6 +482,7 @@ export class Workbench {
     if (!target || target === oldPath || target.startsWith(oldPath + '/')) return;
     if (await this.workspace.rename(oldPath, target)) {
       this.editors.applyRename(oldPath, target);
+      this.sprites.applyRename(oldPath, target);
       this.debug.pathRenamed(oldPath, target);
       void this.buildSymbolIndex();
       void this.git.autoRefresh();
@@ -460,6 +500,7 @@ export class Workbench {
     if (!confirmed) return;
     if (await this.workspace.remove(target)) {
       this.editors.applyDelete(target);
+      this.sprites.applyDelete(target);
       void this.git.autoRefresh();
     }
   }
@@ -491,12 +532,16 @@ export class Workbench {
   commandEnabled(id: CommandID): boolean {
     const project = !!this.workspace.project;
     const textTab = !!this.editors.activeTab;
+    const sprite = this.sprites.active;
     const building = this.operations.isRunning('build');
     switch (id) {
       case 'file.close': case 'file.new': case 'file.newFolder': case 'quickOpen': case 'symbols': case 'trust': return project;
       case 'file.rename': case 'file.delete': return project && !!this.workspace.selected;
-      case 'file.save': case 'editor.undo': case 'editor.redo': case 'editor.split': case 'editor.copyPath': case 'editor.selectAll': case 'editor.find': case 'editor.definition': return textTab;
-      case 'file.saveAll': return this.editors.dirtyTabs.length > 0;
+      case 'file.save': return textTab || !!sprite;
+      case 'editor.undo': return textTab || !!sprite?.history.undo;
+      case 'editor.redo': return textTab || !!sprite?.history.redo;
+      case 'editor.split': case 'editor.copyPath': case 'editor.selectAll': case 'editor.find': case 'editor.definition': return textTab;
+      case 'file.saveAll': return this.editors.dirtyTabs.length > 0 || this.sprites.host.dirty().length > 0;
       case 'editor.close': return this.editors.active !== '';
       case 'nav.back': return this.editors.historyState.back;
       case 'nav.forward': return this.editors.historyState.forward;
@@ -511,6 +556,10 @@ export class Workbench {
       case 'emulator.restart': case 'emulator.stop': return this.emulator.running;
       case 'terminal.new': case 'terminal.focus': case 'claude.open': return project;
       case 'terminal.kill': return !!this.terminal.activeId;
+      case 'sprites.new': case 'sprites.merge': return project;
+      case 'sprites.open': return project && !!this.spriteCandidate;
+      case 'sprites.openText': return !!sprite && !!(sprite.sheetPath ?? sprite.framesPath ?? sprite.bank?.index);
+      case 'sprites.generate': return !!sprite;
       default: return true;
     }
   }
@@ -528,13 +577,17 @@ export class Workbench {
       case 'file.newFolder': this.beginCreate('folder'); return;
       case 'file.rename': await this.renameSelected(); return;
       case 'file.delete': await this.deleteSelected(); return;
-      case 'file.save': await this.editors.save(this.editors.active); return;
+      case 'file.save':
+        if (this.sprites.active) await this.sprites.save(this.sprites.active); else await this.editors.save(this.editors.active);
+        return;
       case 'file.saveAll': await this.ui.task('Saving all', async () => { if (!(await this.editors.saveAll())) throw new Error('some files could not be saved'); }); return;
       case 'editor.close':
-        if (this.editors.active === EMULATOR_TAB) { await this.emulator.stop(); this.editors.closeEmulator(); } else await this.editors.close(this.editors.active);
+        if (this.editors.active === EMULATOR_TAB) { await this.emulator.stop(); this.editors.closeEmulator(); }
+        else if (this.sprites.active) await this.sprites.close(this.sprites.active);
+        else await this.editors.close(this.editors.active);
         return;
-      case 'editor.undo': this.editorAction('undo'); return;
-      case 'editor.redo': this.editorAction('redo'); return;
+      case 'editor.undo': if (this.sprites.active) this.sprites.active.undo(); else this.editorAction('undo'); return;
+      case 'editor.redo': if (this.sprites.active) this.sprites.active.redo(); else this.editorAction('redo'); return;
       case 'editor.selectAll': this.editorAction('selectAll'); return;
       case 'editor.find': this.editorAction('find'); return;
       case 'editor.definition': this.editorAction('definition'); return;
@@ -598,6 +651,12 @@ export class Workbench {
         } else if (await this.workspace.requestTrust('build, run, open a terminal and use Git fully')) this.editors.relintAll();
         return;
       case 'support.bundle': await this.exportSupportBundle(); return;
+      case 'view.sprites': this.ui.showActivity('sprites'); return;
+      case 'sprites.new': await this.sprites.newSheet(); return;
+      case 'sprites.merge': this.ui.showActivity('sprites'); this.sprites.merging = { paths: [] }; return;
+      case 'sprites.open': await this.sprites.open(this.spriteCandidate); return;
+      case 'sprites.openText': await this.openSpriteText(); return;
+      case 'sprites.generate': if (this.sprites.active) await this.sprites.generate(this.sprites.active); return;
       default: id satisfies never;
     }
   }
@@ -629,7 +688,7 @@ export class Workbench {
     if (this.palette.mode === 'files') {
       return (this.workspace.project?.files ?? []).filter(file => matches(file.path)).slice(0, 50).map(file => ({
         key: file.path, label: baseName(file.path), detail: parentOf(file.path), icon: 'file',
-        run: () => { this.closePalette(false); void this.editors.open(file.path); },
+        run: () => { this.closePalette(false); void this.openFile(file.path); },
       }));
     }
     return this.allSymbols.filter(item => matches(item.symbol.name)).slice(0, 80).map(item => ({

@@ -24,6 +24,12 @@ compiler, an Atari800-based emulator and ATR disk tools included.
   disassembly and a memory viewer.
 - **ATR explorer**: browse, import, extract, rename and delete inside SDFS
   and EOSFS images, with drag and drop to and from the project.
+- **Sprite Studio**: a pixel editor for player/missile sprites with frames,
+  onion skin, animation preview and a palette that maps each colour to the
+  player planes it sets. It opens sprite sheets, plain frames JSON, PMG banks
+  and PNGs, generates the PMG bank, its index, an exBASIC `DATA` include and
+  a PNG atlas, and merges several sheets into one bank. See
+  [docs/SPRITES.md](docs/SPRITES.md).
 - **Git**: status, diff, staging, commits, branches, remotes, fetch/pull/push
   and merge conflict resolution.
 - **Terminal**: real shell sessions.
@@ -103,6 +109,7 @@ task check                          # everything CI runs
 - [docs/SECURITY.md](docs/SECURITY.md)
 - [docs/PLATFORMS.md](docs/PLATFORMS.md)
 - [docs/PROJECT-CONFIG.md](docs/PROJECT-CONFIG.md)
+- [docs/SPRITES.md](docs/SPRITES.md)
 - [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)
 - [docs/ROADMAP-EXTENSIONS.md](docs/ROADMAP-EXTENSIONS.md) (extensions are
   planned after 1.0 and are not part of it)

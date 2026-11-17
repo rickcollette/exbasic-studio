@@ -4,6 +4,28 @@ All notable changes to exBASIC Studio are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Sprite Studio.** A new activity-bar view and editor for player/missile
+  sprites. Draw frames with pencil, eraser, fill, line and rectangle tools,
+  with undo, onion skin, a per-plane view and an animation preview. Each
+  palette colour lists the player planes it sets, so multi-player sprites
+  (and their GTIA overlap colours) are edited as one image.
+- **Sprite sheets** (`*.sprites.json`) hold the frames, palette, planes and
+  output files, or point at a plain frames JSON so existing scripts that
+  read it keep working. *Generate* writes the PMG frame bank, an index of
+  frame and plane offsets (per-plane or simple layout), an exBASIC include
+  with the bank as `DATA` statements, and a PNG atlas.
+- **Sprite import and merge.** PMG banks open through the index beside them;
+  PNGs are cut into frames and mapped to the palette; *Merge* combines
+  sheets, frame files and banks into one sheet, unifying sizes, planes and
+  palettes. Sprite files open in the Studio from the Explorer, and *Open
+  Sheet as JSON Text* switches to the text editor.
+- The backend gained `ReadBinaryFile` and `SaveBinaryFile` (base64, at most
+  8 MiB, inside the workspace only) for these binary assets.
+
 ## [1.0.0-rc.2]
 
 ### Added
