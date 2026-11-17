@@ -1,0 +1,52 @@
+// Structural grammar for exBASIC.
+//
+// The compiler is the authority on semantics; this grammar exists for
+// highlighting, folding and block matching, so it is deliberately tolerant:
+// a program is a flat stream of tokens in which multi-line blocks nest.
+// Keyword recognition (case-insensitive words and dot abbreviations) lives
+// in the external tokenizer, which reads the catalog generated from the
+// compiler's syntax definitions.
+
+@top Program { element* }
+
+element { Block | simple }
+
+Block { FuncBlock | IfBlock | ForBlock | WhileBlock | RepeatBlock | DoBlock }
+
+FuncBlock { FuncOpen element* FuncClose }
+IfBlock { IfOpen element* IfClose }
+ForBlock { ForOpen element* ForClose }
+WhileBlock { WhileOpen element* WhileClose }
+RepeatBlock { RepeatOpen element* RepeatClose }
+DoBlock { DoOpen element* DoClose }
+
+simple {
+  Statement | Keyword | Builtin | Identifier | Remark |
+  Number | String | Comment | Operator | Separator | newline
+}
+
+@external tokens words from "./tokens" {
+  FuncOpen, FuncClose, IfOpen, IfClose, ForOpen, ForClose,
+  WhileOpen, WhileClose, RepeatOpen, RepeatClose, DoOpen, DoClose,
+  Statement, Keyword, Builtin, Identifier, Remark
+}
+
+@skip { space }
+
+@tokens {
+  space { $[ \t]+ }
+  newline { "\r"? "\n" | "\r" }
+  Comment { "'" ![\r\n]* }
+  String { '"' (![\r\n"] | '""')* '"'? }
+  Number {
+    "$" $[0-9a-fA-F]+ |
+    "%" $[01]+ |
+    @digit+ ("." @digit*)? ($[eE] $[+\-]? @digit+)? |
+    "." @digit+ ($[eE] $[+\-]? @digit+)?
+  }
+  Separator { ":" | "," | ";" }
+  Operator { $[-+*/=<>&!^#@()\[\]$%.?~|{}\\] }
+  @precedence { Number, Operator }
+}
+
+@detectDelim

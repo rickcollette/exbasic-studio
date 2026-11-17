@@ -1,0 +1,36 @@
+# Third-party notices
+
+exBASIC Studio itself is licensed under the MIT License (see `LICENSE`).
+
+It ships with, and runs as **separate processes**, the programs below. They
+are not linked into the Studio executable. Each is distributed under its own
+license, and the complete license text is installed beside the tools in
+`tools/licenses/`.
+
+| Component | Version | License | Source in this repository | Shipped as |
+|-----------|---------|---------|---------------------------|------------|
+| exBASIC compiler, with the CC65 assembler/linker/archiver (`ca65`, `ld65`, `ar65`) and `mkatr`/`lsatr` | 1.0.0 | GPL-2.0-or-later, with the FastBasic runtime exception | `third_party/exbasic/source` | `tools/exbasic/` |
+| Atari800 emulator core (`libatari800`) and the `atari800-studio` helper that links it | 7.2.1 | GPL-2.0-or-later | `third_party/atari800/atari800-7.2.1`, `third_party/atari800/studio-helper` | `tools/atari800-studio` |
+| mkatr-go (Go port of dmsc/mkatr, with EOSFS support) | bundled | GPL-2.0-only | `third_party/mkatrgo`, `cmd/mkatr-go` | `tools/mkatr-go` |
+| EOS cartridge image | bundled | see `tools/licenses/` and the ExtendedOS project | `third_party/EOS.car` | `tools/EOS.car` |
+
+The Atari800 fork adds a 256K Rambo memory configuration (implemented with
+Altirra 4.40, GPL-2.0, as the compatibility reference) and enables the
+core's code-breakpoint support for the library target; see
+`third_party/atari800/NOTICE.md`. The exBASIC compiler is based on FastBasic
+by Daniel Serpell; see `third_party/exbasic/NOTICE.md`.
+
+The corresponding source for every GPL component is the pinned source tree
+in this repository at the tag of the release you are using; the release
+build uses exactly those trees (`build/tools/build-toolchain.sh`).
+
+## Libraries compiled into exBASIC Studio
+
+The Studio executable and its user interface include open-source libraries
+under permissive licenses (MIT, BSD, Apache-2.0, ISC and similar), among them
+Wails, CodeMirror, Lezer, xterm.js, Svelte, marked, DOMPurify, the VS Code
+codicons font (CC-BY-4.0), fsnotify and creack/pty.
+
+The exact list with versions and license identifiers for a given release is
+in the software bill of materials published with it (`*.spdx.json`), which is
+generated from `go.mod` and `frontend/package-lock.json`.

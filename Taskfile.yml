@@ -6,55 +6,127 @@ vars:
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
   GOOS: '{{.GOOS | default OS}}'
+  # The single source of the application version is the VERSION file.
+  VERSION:
+    sh: go run ./build/tools/version --print
+  # Staged tools built from the pinned sources in third_party/.
+  STAGE_DIR: '{{.ROOT_DIR}}/build/stage/{{OS}}-{{ARCH}}'
+  BASH: '{{if eq OS "windows"}}"C:/Program Files/Git/bin/bash.exe"{{else}}bash{{end}}'
 
 includes:
   common: ./build/Taskfile.yml
   windows: ./build/windows/Taskfile.yml
   darwin: ./build/darwin/Taskfile.yml
   linux: ./build/linux/Taskfile.yml
-  ios: ./build/ios/Taskfile.yml
-  android: ./build/android/Taskfile.yml
 
 tasks:
-  build:
-    desc: Build the application for the current or selected platform
+  toolchain:
+    desc: Build exBASIC, Atari800, atari800-studio and mkatr-go from pinned sources and stage them
+    sources:
+      - third_party/exbasic/source/src/**/*
+      - third_party/exbasic/source/Makefile
+      - third_party/atari800/atari800-7.2.1/src/**/*
+      - third_party/atari800/atari800-7.2.1/configure
+      - third_party/atari800/studio-helper/main.c
+      - third_party/mkatrgo/**/*.go
+      - cmd/mkatr-go/**/*.go
+      - build/tools/build-toolchain.sh
+    generates:
+      - build/stage/{{OS}}-{{ARCH}}/tools/**/*
     cmds:
+      - '{{.BASH}} build/tools/build-toolchain.sh'
+
+  build:
+    desc: Build the application and its toolchain for the current platform
+    cmds:
+      - task: version:check
+      - task: toolchain
       - task: "{{.GOOS}}:build"
-      - task: common:build:mkatr
-        vars:
-          TARGET_OS: '{{.GOOS}}'
-          TARGET_ARCH: '{{.ARCH | default ARCH}}'
-          OUTPUT: '{{.BIN_DIR}}/mkatr-go{{if eq .GOOS "windows"}}.exe{{end}}'
-      - task: common:stage:tools
+      - task: tools:sync
+
+  tools:sync:
+    desc: Mirror the staged tools next to the built executable so bin/ runs as an installed copy does
+    cmds:
+      - '{{.BASH}} -c "rm -rf bin/tools && cp -R build/stage/{{OS}}-{{ARCH}}/tools bin/tools"'
 
   package:
-    desc: Package a production build for the current or selected platform
+    desc: Package a production build (installer/archive) for the current platform
     cmds:
+      - task: version:check
+      - task: toolchain
       - task: "{{.GOOS}}:package"
 
   run:
     desc: Run the application for the current platform
+    env:
+      EXBASIC_STUDIO_TOOLS: '{{.STAGE_DIR}}/tools'
     cmds:
       - task: "{{.GOOS}}:run"
 
   dev:
     desc: Run the application with Go and frontend live reload
+    deps: [toolchain]
+    env:
+      # Development builds find the staged tools through the explicit
+      # override; packaged builds find them in the application resources.
+      EXBASIC_STUDIO_TOOLS: '{{.STAGE_DIR}}/tools'
     cmds:
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
 
   test:
+    desc: Run backend tests against the staged toolchain (no skipped tool tests)
+    deps: [toolchain]
+    env:
+      EXBASIC_STUDIO_TOOLS: '{{.STAGE_DIR}}/tools'
+      EXBASIC_STUDIO_REQUIRE_TOOLS: '1'
     cmds:
-      - go test ./...
+      - go test -buildvcs=false ./...
+
+  test:frontend:
+    desc: Run frontend type checks, unit tests and the production build
+    dir: frontend
+    cmds:
+      - npm run check
+      - npm run check:language
+      - npm test
+      - npm run build
+
+  test:e2e:
+    desc: Run browser end-to-end and accessibility tests against the mock backend
+    dir: frontend
+    cmds:
+      - npx playwright test
 
   check:
-    desc: Run backend tests and frontend type checks
+    desc: Everything CI runs for a pull request
     cmds:
-      - go test ./...
-      - npm --prefix frontend run check
+      - task: version:check
+      - go vet -buildvcs=false ./...
+      - task: bindings:check
+      - task: test
+      - task: test:frontend
+      - task: test:e2e
+
+  version:sync:
+    desc: Apply the VERSION file to every build and package definition
+    cmds:
+      - go run ./build/tools/version
+
+  version:check:
+    desc: Fail if any build or package definition does not match VERSION
+    cmds:
+      - go run ./build/tools/version --check
 
   bindings:
+    desc: Regenerate the frontend bindings from the Go service
     cmds:
       - task: common:generate:bindings
+
+  bindings:check:
+    desc: Fail if the checked-in bindings differ from the Go service
+    cmds:
+      - task: common:generate:bindings
+      - git diff --exit-code -- frontend/bindings
 
   frontend:
     cmds:
@@ -67,15 +139,3 @@ tasks:
   setup:docker:
     cmds:
       - task: common:setup:docker
-
-  toolchain:rebuild:exbasic:
-    desc: Rebuild eXBASIC from its language source tree and import the complete compiler distribution
-    vars:
-      EXBASIC_SOURCE: '{{.EXBASIC_SOURCE | default "E:/exBasic"}}'
-    cmds:
-      - cmd: '"C:/Program Files/Git/bin/bash.exe" -lc ''cd "{{.EXBASIC_SOURCE}}" && make -B all'''
-        platforms: [windows]
-      - cmd: 'powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}/build/tools/import-exbasic-windows.ps1" -Root "{{.ROOT_DIR}}" -Source "{{.EXBASIC_SOURCE}}"'
-        platforms: [windows]
-      - cmd: 'cd "{{.EXBASIC_SOURCE}}" && make -B all && mkdir -p "{{.ROOT_DIR}}/third_party/exbasic/{{OS}}-{{ARCH}}/compiler" && cp -R build/compiler/. "{{.ROOT_DIR}}/third_party/exbasic/{{OS}}-{{ARCH}}/compiler/"'
-        platforms: [linux, darwin]

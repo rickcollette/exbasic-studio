@@ -1,0 +1,303 @@
+name: Release
+
+# Runs for semantic-version tags (v1.0.0, v1.0.0-rc.1). It builds every
+# platform artifact from the pinned sources, signs and notarizes them,
+# installs and smoke-tests each one, and creates a DRAFT release with
+# checksums, SBOMs and provenance attestations. A maintainer reviews the
+# draft and publishes it by hand; there is no automatic publication and the
+# application has no updater.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+
+permissions:
+  contents: read
+
+env:
+  WAILS_VERSION: v3.0.0
+  NODE_VERSION: "22"
+  EXBASIC_STUDIO_REQUIRE_TOOLS: "1"
+
+jobs:
+  verify:
+    name: Verify tag and tests
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - id: version
+        name: The tag must equal the VERSION file
+        run: |
+          version="$(go run ./build/tools/version --print)"
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME does not match VERSION $version"; exit 1; }
+          go run ./build/tools/version --check
+          grep -q "^## \[$version\]" CHANGELOG.md || { echo "CHANGELOG.md has no entry for $version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;; *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;; esac
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: windows-amd64, os: windows-2022, shell: "msys2 {0}" }
+          - { name: linux-amd64, os: ubuntu-24.04, shell: bash }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, shell: bash }
+          - { name: darwin-amd64, os: macos-13, shell: bash }
+          - { name: darwin-arm64, os: macos-14, shell: bash }
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up MSYS2 (MinGW-w64 toolchain, NSIS)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          path-type: inherit
+          install: make zip mingw-w64-x86_64-gcc mingw-w64-x86_64-nsis
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev rpm xvfb desktop-file-utils libfuse2t64
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install build tools
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
+          go install github.com/go-task/task/v3/cmd/task@v3.40.1
+
+      - name: Toolchain from pinned sources
+        run: bash build/tools/build-toolchain.sh
+
+      - name: Tests against the staged toolchain (none may be skipped)
+        run: |
+          (cd frontend && npm ci && npm run check && npm run check:language && npm test)
+          export EXBASIC_STUDIO_TOOLS="$PWD/build/stage/$(go env GOOS)-$(go env GOARCH)/tools"
+          (cd frontend && npm run build)
+          go test ./...
+
+      # ---- Windows: signed installer and portable ZIP --------------------------
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          task windows:build
+          bash build/windows/sign.sh bin/exbasic-studio.exe build/stage/windows-amd64/tools
+          task windows:create:nsis:installer
+          mv "bin/exbasic-studio-amd64-installer.exe" "bin/exbasic-studio-$VERSION-windows-amd64-setup.exe"
+          bash build/windows/sign.sh "bin/exbasic-studio-$VERSION-windows-amd64-setup.exe"
+          powershell -NoProfile -ExecutionPolicy Bypass -File build/windows/package-portable.ps1 -Root "$(cygpath -w "$PWD")" -Version "$VERSION" -Arch amd64
+
+      - name: Install, verify signatures and smoke-test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = $env:VERSION
+          foreach ($file in "bin/exbasic-studio-$version-windows-amd64-setup.exe") {
+            $signature = Get-AuthenticodeSignature $file
+            if ($signature.Status -ne 'Valid') { throw "$file is not validly signed: $($signature.Status)" }
+          }
+          # Installer: silent per-user install, self-test, launch, uninstall.
+          Start-Process -Wait "bin/exbasic-studio-$version-windows-amd64-setup.exe" -ArgumentList '/S'
+          $installed = Get-ChildItem "$env:ProgramFiles", "$env:LOCALAPPDATA\Programs" -Recurse -Filter exbasic-studio.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $installed) { throw 'the installer did not install exbasic-studio.exe' }
+          if ((Get-AuthenticodeSignature $installed.FullName).Status -ne 'Valid') { throw 'the installed executable is not signed' }
+          $test = Start-Process -Wait -PassThru $installed.FullName -ArgumentList '--self-test', "$PWD\selftest-installer.txt"
+          Get-Content selftest-installer.txt
+          if ($test.ExitCode -ne 0) { throw 'installed self-test failed' }
+          $app = Start-Process -PassThru $installed.FullName
+          Start-Sleep 10
+          if ($app.HasExited) { throw 'the application exited right after launch' }
+          Stop-Process -Id $app.Id -Force
+          $uninstaller = Join-Path $installed.DirectoryName 'uninstall.exe'
+          Start-Process -Wait $uninstaller -ArgumentList '/S'
+          Start-Sleep 5
+          if (Test-Path $installed.FullName) { throw 'uninstall left the application behind' }
+          # Portable ZIP.
+          Expand-Archive "bin/exbasic-studio-$version-windows-amd64-portable.zip" -DestinationPath portable
+          $test = Start-Process -Wait -PassThru portable/exbasic-studio.exe -ArgumentList '--self-test', "$PWD\selftest-portable.txt"
+          Get-Content selftest-portable.txt
+          if ($test.ExitCode -ne 0) { throw 'portable self-test failed' }
+
+      # ---- Linux: AppImage, DEB and RPM ------------------------------------------
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          arch="$(go env GOARCH)"
+          task linux:package
+          mv bin/exbasic-studio*.AppImage "bin/exbasic-studio-$VERSION-linux-$arch.AppImage"
+          mv bin/exbasic-studio*.deb "bin/exbasic-studio-$VERSION-linux-$arch.deb"
+          mv bin/exbasic-studio*.rpm "bin/exbasic-studio-$VERSION-linux-$arch.rpm"
+
+      - name: Install, verify and smoke-test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          arch="$(go env GOARCH)"
+          unset EXBASIC_STUDIO_TOOLS
+          # DEB: declared dependencies must resolve; desktop entry must be valid.
+          sudo apt-get install -y "./bin/exbasic-studio-$VERSION-linux-$arch.deb"
+          desktop-file-validate /usr/share/applications/exbasic-studio.desktop
+          test -x /usr/bin/exbasic-studio
+          ldd /usr/bin/exbasic-studio | (! grep "not found")
+          /usr/bin/exbasic-studio --self-test
+          xvfb-run -a timeout 15 /usr/bin/exbasic-studio || test $? -eq 124
+          sudo apt-get remove -y exbasic-studio
+          test ! -e /usr/bin/exbasic-studio && test ! -e /usr/lib/exbasic-studio
+          # RPM: contents and declared dependencies.
+          rpm -qp --requires "bin/exbasic-studio-$VERSION-linux-$arch.rpm"
+          rpm -qpl "bin/exbasic-studio-$VERSION-linux-$arch.rpm" | grep -q /usr/lib/exbasic-studio/tools/atari800-studio
+          # AppImage.
+          chmod +x "bin/exbasic-studio-$VERSION-linux-$arch.AppImage"
+          "./bin/exbasic-studio-$VERSION-linux-$arch.AppImage" --self-test
+          xvfb-run -a timeout 15 "./bin/exbasic-studio-$VERSION-linux-$arch.AppImage" || test $? -eq 124
+
+      # ---- macOS: per-architecture bundle (made universal in the next job) -------
+      - name: Build application bundle (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          task darwin:build
+          task darwin:create:app:bundle
+          ./bin/exbasic-studio.app/Contents/MacOS/exbasic-studio --self-test
+          ditto -c -k --keepParent bin/exbasic-studio.app "bin/exbasic-studio-${{ matrix.name }}.app.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          if-no-files-found: error
+          path: |
+            bin/exbasic-studio-*-setup.exe
+            bin/exbasic-studio-*-portable.zip
+            bin/exbasic-studio-*.AppImage
+            bin/exbasic-studio-*.deb
+            bin/exbasic-studio-*.rpm
+            bin/exbasic-studio-darwin-*.app.zip
+
+  macos:
+    name: macOS universal DMG (signed and notarized)
+    needs: [verify, build]
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: darwin-*
+          merge-multiple: true
+          path: parts
+      - name: Create the universal bundle
+        run: |
+          (cd parts && unzip -q exbasic-studio-darwin-amd64.app.zip -d amd64 && unzip -q exbasic-studio-darwin-arm64.app.zip -d arm64)
+          bash build/darwin/make-universal.sh parts/amd64/exbasic-studio.app parts/arm64/exbasic-studio.app "bin/exBASIC Studio.app"
+      - name: Sign with the Developer ID and notarize
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        run: bash build/darwin/sign-and-notarize.sh "bin/exBASIC Studio.app" "bin/exbasic-studio-$VERSION-macos-universal.dmg"
+      - name: Verify Gatekeeper acceptance, install and smoke-test
+        run: |
+          dmg="bin/exbasic-studio-$VERSION-macos-universal.dmg"
+          xcrun stapler validate "$dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
+          hdiutil attach "$dmg" -mountpoint /Volumes/exbasic -nobrowse
+          cp -R "/Volumes/exbasic/exBASIC Studio.app" /Applications/
+          hdiutil detach /Volumes/exbasic
+          app="/Applications/exBASIC Studio.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+          lipo -archs "$app/Contents/MacOS/exbasic-studio" | grep -q x86_64
+          lipo -archs "$app/Contents/MacOS/exbasic-studio" | grep -q arm64
+          "$app/Contents/MacOS/exbasic-studio" --self-test
+          arch -x86_64 "$app/Contents/MacOS/exbasic-studio" --self-test
+          open -a "$app" && sleep 12 && pgrep -x exbasic-studio && pkill -x exbasic-studio
+          rm -rf "$app"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: darwin-universal
+          if-no-files-found: error
+          path: bin/exbasic-studio-*-macos-universal.dmg
+
+  publish:
+    name: Checksums, SBOM, provenance and draft release
+    needs: [verify, build, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: parts
+      - name: Collect release files
+        run: |
+          mkdir dist
+          find parts -type f \( -name '*-setup.exe' -o -name '*-portable.zip' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' -o -name '*.dmg' \) -exec cp {} dist/ \;
+          ls -l dist
+          test "$(ls dist | wc -l)" -eq 9 || { echo "expected 9 release files"; exit 1; }
+          cp THIRD_PARTY_NOTICES.md LICENSE dist/
+      - name: Software bill of materials (application and frontend)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: dist/exbasic-studio-${{ env.VERSION }}.spdx.json
+          upload-artifact: false
+      - name: Third-party license notices are complete
+        run: |
+          for component in exBASIC Atari800 mkatr-go EOS; do grep -q "$component" dist/THIRD_PARTY_NOTICES.md || { echo "notices lack $component"; exit 1; }; done
+      - name: SHA-256 checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Build provenance attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*-setup.exe
+            dist/*-portable.zip
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/*.dmg
+      - name: Release notes from the changelog
+        run: awk -v v="$VERSION" '$0 ~ "^## \\[" v "\\]" {on=1; next} on && /^## \[/ {exit} on' CHANGELOG.md > notes.md && test -s notes.md
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags="--draft --verify-tag --title \"exBASIC Studio $VERSION\" --notes-file notes.md"
+          if [ "${{ needs.verify.outputs.prerelease }}" = "true" ]; then flags="$flags --prerelease"; fi
+          eval gh release create "$GITHUB_REF_NAME" dist/* $flags

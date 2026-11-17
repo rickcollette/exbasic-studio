@@ -31,11 +31,8 @@ Unicode true
 ## !define REQUEST_EXECUTION_LEVEL "admin"            # Default "admin"  see also https://nsis.sourceforge.io/Docs/Chapter4.html
 ## !define WAILS_INSTALL_SCOPE     "user"             # Default "machine" - set to "user" for per-user install ($LOCALAPPDATA) without UAC prompt
 ####
-!ifndef ARG_MKATR_BINARY
-    !define ARG_MKATR_BINARY "..\..\..\bin\mkatr-go.exe"
-!endif
 !ifndef ARG_TOOLS_DIR
-    !define ARG_TOOLS_DIR "..\..\..\bin\tools"
+    !define ARG_TOOLS_DIR "..\..\stage\windows-amd64\tools"
 !endif
 
 ## Include the wails tools
@@ -99,7 +96,8 @@ Section
     SetOutPath $INSTDIR
     
     !insertmacro wails.files
-    File "/oname=mkatr-go.exe" "${ARG_MKATR_BINARY}"
+    File "..\..\..\LICENSE"
+    File "..\..\..\THIRD_PARTY_NOTICES.md"
     SetOutPath "$INSTDIR\tools"
     File /r "${ARG_TOOLS_DIR}\*"
     SetOutPath $INSTDIR

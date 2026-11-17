@@ -52,5 +52,9 @@ int prog_exec(std::string exe, std::vector<std::string> &args);
 void init(const std::string &prog);
 // Remove a file
 void remove_file(const std::string &path);
+// Renames a file, replacing the destination. Returns true on success.
+bool rename_file(const std::string &from, const std::string &to);
+// Returns the current working directory
+std::string current_dir();
 
 } // namespace os

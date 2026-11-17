@@ -11,6 +11,12 @@ APP_DIR="${APP_NAME}.AppDir"
 # Create AppDir structure
 mkdir -p "${APP_DIR}/usr/bin"
 cp -r "${APP_BINARY}" "${APP_DIR}/usr/bin/"
+
+# Bundle the separately licensed tools where the application looks for them:
+# usr/bin/<app> -> usr/lib/exbasic-studio/tools.
+TOOLS_DIR="${TOOLS_DIR:-$(cd "$(dirname "$0")/../../.." && pwd)/build/stage/linux-$(go env GOARCH)/tools}"
+mkdir -p "${APP_DIR}/usr/lib/exbasic-studio"
+cp -r "${TOOLS_DIR}" "${APP_DIR}/usr/lib/exbasic-studio/tools"
 cp "${ICON_PATH}" "${APP_DIR}/"
 cp "${DESKTOP_FILE}" "${APP_DIR}/"
 

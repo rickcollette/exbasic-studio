@@ -7,16 +7,13 @@ import (
 	"time"
 
 	"exbasicstudio/internal/atrexplorer"
-	"exbasicstudio/internal/compiler"
 	"exbasicstudio/internal/emulator"
 	"exbasicstudio/internal/project"
+	"exbasicstudio/internal/tools/toolstest"
 )
 
 func TestPrepareEOSHostDiskReservesD8AndSynchronizes(t *testing.T) {
-	tool := filepath.Join("..", "..", "bin", "mkatr-go.exe")
-	if _, err := os.Stat(tool); err != nil {
-		t.Skipf("mkatr-go unavailable: %v", err)
-	}
+	tool := toolstest.Tool(t, "mkatr-go")
 	root := t.TempDir()
 	hostDir := filepath.Join(root, "H")
 	if err := os.MkdirAll(hostDir, 0o755); err != nil {
@@ -72,27 +69,23 @@ func TestPrepareEOSHostDiskReservesD8AndSynchronizes(t *testing.T) {
 }
 
 func TestProjectHostPath(t *testing.T) {
+	hostRoot := t.TempDir()
 	for _, path := range []string{"H", "H/file.txt", "h\\nested\\file.bas"} {
-		if !isProjectHostPath(path) {
+		if !isProjectHostPath(hostRoot, filepath.Join(hostRoot, "H"), path) {
 			t.Errorf("isProjectHostPath(%q) = false", path)
 		}
 	}
 	for _, path := range []string{"", "src/H/file.txt", "H2/file.txt", "H/../file.txt"} {
-		if isProjectHostPath(path) {
+		if isProjectHostPath(hostRoot, filepath.Join(hostRoot, "H"), path) {
 			t.Errorf("isProjectHostPath(%q) = true", path)
 		}
 	}
 }
 
 func TestRunningEOSHostMutationRefreshesD8(t *testing.T) {
-	helper := compiler.ToolPath("atari800-studio")
-	tool := compiler.ToolPath("mkatr-go")
-	eosCar := compiler.AssetPath("EOS.car")
-	for name, path := range map[string]string{"Atari800 bridge": helper, "ATR tool": tool, "EOS cartridge": eosCar} {
-		if _, err := os.Stat(path); err != nil {
-			t.Skipf("%s unavailable: %v", name, err)
-		}
-	}
+	helper := toolstest.Tool(t, "atari800-studio")
+	tool := toolstest.Tool(t, "mkatr-go")
+	eosCar := toolstest.Asset(t, "EOS.car")
 	p, err := project.Create(t.TempDir(), "lived8")
 	if err != nil {
 		t.Fatal(err)
@@ -112,11 +105,11 @@ func TestRunningEOSHostMutationRefreshesD8(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := New()
+	service := NewWithDir(t.TempDir())
 	service.active = p
 	service.emulator = session
 	service.emulatorLaunch = launch
-	t.Cleanup(func() { _ = service.EmulatorStop() })
+	t.Cleanup(func() { _ = service.ServiceShutdown() })
 
 	if err = service.SaveFile("H/LIVE.TXT", "visible without restarting"); err != nil {
 		t.Fatal(err)

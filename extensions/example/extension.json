@@ -1,8 +1,0 @@
-{
-  "id": "org.example.memory-map",
-  "name": "Atari Memory Map",
-  "version": "0.1.0",
-  "apiVersion": "1",
-  "entrypoint": "plugin.wasm",
-  "permissions": ["project.read", "build.artifacts.read"]
-}

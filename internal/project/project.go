@@ -1,6 +1,7 @@
 package project
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,28 +10,50 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
+	"time"
+	"unicode/utf8"
 )
 
 const ConfigName = "exbasic.project.json"
 const MaxSourceBytes int64 = 2 << 20
 const MaxProjectFiles = 4000
 
+// maxEntryScan bounds the search for a default entry file in a folder that
+// has no project configuration.
+const maxEntryScan = 3 * MaxProjectFiles
+
+// ErrTooLarge reports a folder that is too big to be a project.
+var ErrTooLarge = fmt.Errorf("this folder holds more than %d files or folders, which is too many for a project; open the project's own folder instead", MaxProjectFiles)
+
+// CurrentSchemaVersion is the exbasic.project.json format written by this
+// release. Files without a version are the pre-1.0 alpha format.
+const CurrentSchemaVersion = 1
+
+// Import limits keep a drag-and-drop of an unexpectedly large tree from
+// filling the workspace or freezing the application.
+const (
+	MaxImportFiles       = 5000
+	MaxImportBytes int64 = 256 << 20
+)
+
 var namePattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,63}$`)
 
 type Config struct {
-	Name         string    `json:"name"`
-	Entry        string    `json:"entry"`
-	Target       string    `json:"target"`
-	Output       string    `json:"output"`
-	Compiler     string    `json:"compiler"`
-	Emulator     string    `json:"emulator"`
-	Native       string    `json:"native"`
-	Debug        bool      `json:"debug"`
-	IncludePaths []string  `json:"includePaths"`
-	Assembly     []string  `json:"assembly"`
-	ATR          ATRConfig `json:"atr"`
+	SchemaVersion int       `json:"schemaVersion"`
+	Name          string    `json:"name"`
+	Entry         string    `json:"entry"`
+	Target        string    `json:"target"`
+	Output        string    `json:"output"`
+	Compiler      string    `json:"compiler"`
+	Emulator      string    `json:"emulator"`
+	Native        string    `json:"native"`
+	Debug         bool      `json:"debug"`
+	IncludePaths  []string  `json:"includePaths"`
+	Assembly      []string  `json:"assembly"`
+	ATR           ATRConfig `json:"atr"`
 }
 
 // ATRConfig controls packaging compiler output into an SDFS or EOSFS ATR.
@@ -56,19 +79,21 @@ type View struct {
 	Config      Config   `json:"config"`
 	Files       []File   `json:"files"`
 	Directories []string `json:"directories"`
-	Kind        string   `json:"kind"`
-	RemoteHost  string   `json:"remoteHost,omitempty"`
-	RemotePath  string   `json:"remotePath,omitempty"`
+	// HasConfig is false for a plain folder opened without project metadata.
+	HasConfig bool `json:"hasConfig"`
 }
 
 type Project struct {
 	Root   string
 	Config Config
+	// HasConfig reports whether exbasic.project.json exists on disk.
+	HasConfig bool
 }
 
 func DefaultConfig(name string) Config {
 	return Config{
-		Name: name, Entry: "src/main.bas", Target: "atari", Output: "build/" + name + ".xex",
+		SchemaVersion: CurrentSchemaVersion,
+		Name:          name, Entry: "src/main.bas", Target: "atari", Output: "build/" + name + ".xex",
 		Compiler: "exbasic", Emulator: "atari800-studio", Native: "auto", Debug: true,
 		IncludePaths: []string{"src", "lib"}, Assembly: []string{},
 		ATR: ATRConfig{Tool: "mkatr-go", Filesystem: "sparta", Output: "build/" + name + ".atr", Boot: true, BootPage: 7, Files: []string{}},
@@ -162,15 +187,35 @@ func Open(path string) (*Project, error) {
 		}
 		return nil, fmt.Errorf("read exBASIC Studio project configuration: %w", err)
 	}
-	var cfg Config
-	if err = json.Unmarshal(raw, &cfg); err != nil {
+	cfg, err := ParseConfig(raw)
+	if err != nil {
 		return nil, err
+	}
+	return &Project{Root: root, Config: cfg, HasConfig: true}, nil
+}
+
+// ParseConfig decodes and migrates a project configuration in memory. The
+// migrated form reaches disk only when the user saves settings.
+func ParseConfig(raw []byte) (Config, error) {
+	var cfg Config
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return Config{}, fmt.Errorf("parse %s: %w", ConfigName, err)
+	}
+	switch {
+	case cfg.SchemaVersion < 0:
+		return Config{}, fmt.Errorf("%s has an invalid schemaVersion", ConfigName)
+	case cfg.SchemaVersion > CurrentSchemaVersion:
+		return Config{}, fmt.Errorf("%s uses schema version %d; this exBASIC Studio supports up to %d", ConfigName, cfg.SchemaVersion, CurrentSchemaVersion)
+	case cfg.SchemaVersion == 0:
+		// Alpha projects carried no version. Their fields are a subset of
+		// version 1, so normalization below is the whole migration.
+		cfg.SchemaVersion = CurrentSchemaVersion
 	}
 	NormalizeConfig(&cfg)
 	if err := ValidateConfig(cfg); err != nil {
-		return nil, err
+		return Config{}, err
 	}
-	return &Project{Root: root, Config: cfg}, nil
+	return cfg, nil
 }
 
 // defaultWorkspaceConfig lets Open Folder behave like an editor workspace.
@@ -183,11 +228,20 @@ func defaultWorkspaceConfig(root string) Config {
 	}
 	cfg := DefaultConfig(name)
 	candidates := make([]string, 0, 8)
+	// The scan is bounded: a folder that is not a project (a home directory,
+	// a whole drive) must not stall Open while it is walked.
+	visited := 0
 	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
+			if entry != nil && entry.IsDir() {
+				return filepath.SkipDir
+			}
 			return nil
 		}
-		if entry.Type()&os.ModeSymlink != 0 {
+		if visited++; visited > maxEntryScan {
+			return filepath.SkipAll
+		}
+		if entry.Type()&(os.ModeSymlink|os.ModeIrregular) != 0 {
 			if entry.IsDir() {
 				return filepath.SkipDir
 			}
@@ -302,11 +356,16 @@ func ValidRel(rel string) error {
 	if strings.ContainsRune(rel, 0) {
 		return errors.New("NUL in path")
 	}
+	// On Windows a colon names an NTFS alternate data stream or a drive.
+	if runtime.GOOS == "windows" && strings.ContainsRune(rel, ':') {
+		return errors.New("':' is not allowed in workspace paths")
+	}
 	return nil
 }
 
-// Resolve restricts reads and writes to the selected project. Symlinks inside
-// the workspace are rejected to avoid following a link outside the root.
+// Resolve restricts reads and writes to the selected project. Symbolic links
+// and Windows reparse points (junctions, mount points) are rejected at every
+// path component so no operation can be redirected outside the root.
 func (p *Project) Resolve(rel string) (string, error) {
 	if err := ValidRel(rel); err != nil {
 		return "", err
@@ -320,8 +379,8 @@ func (p *Project) Resolve(rel string) (string, error) {
 	for _, part := range strings.Split(r, string(os.PathSeparator)) {
 		current = filepath.Join(current, part)
 		info, err := os.Lstat(current)
-		if err == nil && info.Mode()&os.ModeSymlink != 0 {
-			return "", errors.New("symlink paths are not allowed")
+		if err == nil && isLink(info) {
+			return "", errors.New("symbolic links and reparse points are not allowed in workspace paths")
 		}
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return "", err
@@ -331,6 +390,7 @@ func (p *Project) Resolve(rel string) (string, error) {
 }
 
 func (p *Project) SaveConfig() error {
+	p.Config.SchemaVersion = CurrentSchemaVersion
 	NormalizeConfig(&p.Config)
 	if err := ValidateConfig(p.Config); err != nil {
 		return err
@@ -339,7 +399,11 @@ func (p *Project) SaveConfig() error {
 	if err != nil {
 		return err
 	}
-	return atomicWrite(filepath.Join(p.Root, ConfigName), append(data, '\n'))
+	if err = atomicWrite(filepath.Join(p.Root, ConfigName), append(data, '\n')); err != nil {
+		return err
+	}
+	p.HasConfig = true
+	return nil
 }
 func atomicWrite(path string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -365,8 +429,17 @@ func atomicWrite(path string, data []byte) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	// Surface rename errors directly rather than using an unsafe delete-first fallback.
-	return os.Rename(f.Name(), path)
+	// Surface rename errors directly rather than using an unsafe delete-first
+	// fallback. On Windows a virus scanner or indexer that has the target open
+	// for a moment makes the replace fail with a sharing error, so it is
+	// retried briefly.
+	for attempt := 0; ; attempt++ {
+		err = os.Rename(f.Name(), path)
+		if err == nil || attempt >= 9 || !transientReplaceError(err) {
+			return err
+		}
+		time.Sleep(time.Duration(20*(attempt+1)) * time.Millisecond)
+	}
 }
 
 func (p *Project) Read(rel string) (string, error) {
@@ -382,11 +455,26 @@ func (p *Project) Read(rel string) (string, error) {
 		return "", errors.New("file is not a regular editable text file or exceeds 2 MiB")
 	}
 	b, err := os.ReadFile(path)
-	return string(b), err
+	if err != nil {
+		return "", err
+	}
+	if !IsText(b) {
+		return "", errors.New("file is not UTF-8 text and cannot be edited")
+	}
+	return string(b), nil
 }
+
+// IsText reports whether data is valid UTF-8 without NUL bytes.
+func IsText(data []byte) bool {
+	return utf8.Valid(data) && bytes.IndexByte(data, 0) < 0
+}
+
 func (p *Project) Save(rel, content string) error {
 	if int64(len(content)) > MaxSourceBytes {
 		return errors.New("maximum file size is 2 MiB")
+	}
+	if !IsText([]byte(content)) {
+		return errors.New("content is not valid UTF-8 text")
 	}
 	path, err := p.Resolve(rel)
 	if err != nil {
@@ -429,6 +517,7 @@ func (p *Project) ImportPaths(destination string, sources []string) error {
 		return errors.New("drop destination is not a folder")
 	}
 
+	budget := &importBudget{files: MaxImportFiles, bytes: MaxImportBytes}
 	for _, source := range sources {
 		source = filepath.Clean(strings.TrimSpace(source))
 		if source == "." || source == "" {
@@ -442,7 +531,7 @@ func (p *Project) ImportPaths(destination string, sources []string) error {
 		if err != nil {
 			return err
 		}
-		if sourceInfo.Mode()&os.ModeSymlink != 0 {
+		if isLink(sourceInfo) {
 			return fmt.Errorf("cannot import symbolic link %q", source)
 		}
 		targetPath := filepath.Join(destinationPath, filepath.Base(sourcePath))
@@ -457,7 +546,7 @@ func (p *Project) ImportPaths(destination string, sources []string) error {
 				return errors.New("cannot copy a folder into itself")
 			}
 		}
-		if err = copyImportedPath(sourcePath, targetPath, sourceInfo); err != nil {
+		if err = copyImportedPath(sourcePath, targetPath, sourceInfo, budget); err != nil {
 			_ = os.RemoveAll(targetPath)
 			return err
 		}
@@ -465,8 +554,16 @@ func (p *Project) ImportPaths(destination string, sources []string) error {
 	return nil
 }
 
-func copyImportedPath(source, target string, info os.FileInfo) error {
-	if info.Mode()&os.ModeSymlink != 0 {
+type importBudget struct {
+	files int
+	bytes int64
+}
+
+func copyImportedPath(source, target string, info os.FileInfo, budget *importBudget) error {
+	if budget.files--; budget.files < 0 {
+		return fmt.Errorf("import exceeds %d files and folders", MaxImportFiles)
+	}
+	if isLink(info) {
 		return fmt.Errorf("cannot import symbolic link %q", source)
 	}
 	if info.IsDir() {
@@ -482,7 +579,7 @@ func copyImportedPath(source, target string, info os.FileInfo) error {
 			if err != nil {
 				return err
 			}
-			if err = copyImportedPath(filepath.Join(source, entry.Name()), filepath.Join(target, entry.Name()), entryInfo); err != nil {
+			if err = copyImportedPath(filepath.Join(source, entry.Name()), filepath.Join(target, entry.Name()), entryInfo, budget); err != nil {
 				return err
 			}
 		}
@@ -490,6 +587,9 @@ func copyImportedPath(source, target string, info os.FileInfo) error {
 	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("cannot import non-regular file %q", source)
+	}
+	if budget.bytes -= info.Size(); budget.bytes < 0 {
+		return fmt.Errorf("import exceeds %d MiB", MaxImportBytes>>20)
 	}
 	in, err := os.Open(source)
 	if err != nil {
@@ -500,7 +600,11 @@ func copyImportedPath(source, target string, info os.FileInfo) error {
 	if err != nil {
 		return err
 	}
-	_, copyErr := io.Copy(out, in)
+	// The limit also covers a file that grows while it is being copied.
+	written, copyErr := io.Copy(out, io.LimitReader(in, info.Size()+1))
+	if copyErr == nil && written > info.Size() {
+		copyErr = fmt.Errorf("%q changed while it was being imported", source)
+	}
 	closeErr := out.Close()
 	if copyErr != nil {
 		return copyErr
@@ -551,9 +655,13 @@ func (p *Project) Files() ([]File, error) {
 	files := make([]File, 0, 32)
 	err := filepath.WalkDir(p.Root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
+			// An unreadable subfolder is left out; an unreadable root fails.
+			if path != p.Root && d != nil && d.IsDir() {
+				return filepath.SkipDir
+			}
 			return walkErr
 		}
-		if d.Type()&os.ModeSymlink != 0 {
+		if d.Type()&(os.ModeSymlink|os.ModeIrregular) != 0 {
 			return nil
 		}
 		if d.IsDir() {
@@ -570,7 +678,7 @@ func (p *Project) Files() ([]File, error) {
 			return err
 		}
 		if len(files) >= MaxProjectFiles {
-			return errors.New("project has too many files to list")
+			return ErrTooLarge
 		}
 		stat, err := d.Info()
 		if err != nil {
@@ -589,9 +697,13 @@ func (p *Project) Directories() ([]string, error) {
 	directories := make([]string, 0, 16)
 	err := filepath.WalkDir(p.Root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
+			// An unreadable subfolder is left out; an unreadable root fails.
+			if path != p.Root && d != nil && d.IsDir() {
+				return filepath.SkipDir
+			}
 			return walkErr
 		}
-		if d.Type()&os.ModeSymlink != 0 {
+		if d.Type()&(os.ModeSymlink|os.ModeIrregular) != 0 {
 			return nil
 		}
 		if !d.IsDir() || path == p.Root {
@@ -605,7 +717,7 @@ func (p *Project) Directories() ([]string, error) {
 			return err
 		}
 		if len(directories) >= MaxProjectFiles {
-			return errors.New("project has too many directories to list")
+			return ErrTooLarge
 		}
 		directories = append(directories, filepath.ToSlash(rel))
 		return nil
@@ -617,8 +729,8 @@ func (p *Project) Directories() ([]string, error) {
 func (p *Project) View() (View, error) {
 	files, err := p.Files()
 	if err != nil {
-		return View{Root: p.Root, Config: p.Config, Files: files, Kind: "local"}, err
+		return View{Root: p.Root, Config: p.Config, Files: files, HasConfig: p.HasConfig}, err
 	}
 	directories, err := p.Directories()
-	return View{Root: p.Root, Config: p.Config, Files: files, Directories: directories, Kind: "local"}, err
+	return View{Root: p.Root, Config: p.Config, Files: files, Directories: directories, HasConfig: p.HasConfig}, err
 }

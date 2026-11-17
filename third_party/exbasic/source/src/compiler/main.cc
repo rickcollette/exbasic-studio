@@ -19,6 +19,7 @@
 // main.cc: Main compiler file
 
 #include "compile.h"
+#include "metadata.h"
 #include "os.h"
 #include "target.h"
 #include <algorithm>
@@ -37,6 +38,7 @@ static int show_help()
 {
     show_version();
     std::cerr << "Usage: exbasic [options] <input.bas> [<file.asm>...]\n"
+                 "       exbasic --capabilities=json\n"
                  "\n"
                  "Options:\n"
                  " -d\t\tenable parser debug options (only useful to debug parser)\n"
@@ -63,6 +65,9 @@ static int show_help()
                  " -X:<opt>\tpass option to the assembler\n"
                  " -DL:<sym=val>\tdefine linker symbol with given value\n"
                  " -o <name>\tselect output file name\n"
+                 " --metadata-json <file>\twrite build metadata (diagnostics, sources,\n"
+                 "\t\tdebug line map and symbols) as JSON\n"
+                 " --capabilities=json\tprint the supported tool features and exit\n"
                  " -v\t\tshow version and exit\n"
                  " -h\t\tshow this help\n"
                  "\n"
@@ -115,6 +120,9 @@ int main(int argc, char **argv)
     std::string out_name;
     std::string exe_name;
     bool got_outname = false, one_step = false, next_is_output = false;
+    // Metadata document for tools (--metadata-json)
+    std::string meta_name;
+    bool next_is_meta = false;
     int native_mode = 0; // 0 = smallest of hot, lean and all, 1 = hot, 2 = all
     bool keep_temps = false, do_listing = false;
     std::string target_name = "default";
@@ -144,10 +152,30 @@ int main(int argc, char **argv)
             next_is_output = false;
             continue;
         }
+        if(next_is_meta)
+        {
+            meta_name = arg;
+            next_is_meta = false;
+            continue;
+        }
         // Get possible file extension:
         auto lext = os::get_extension_lower(arg);
         // Process options
-        if(arg == "-d")
+        if(arg == "--capabilities=json")
+        {
+            // Feature detection for tools: printed to standard output
+            std::cout << metadata::capabilities_json() << "\n";
+            return 0;
+        }
+        else if(arg == "--metadata-json")
+            next_is_meta = true;
+        else if(arg.rfind("--metadata-json=", 0) == 0)
+        {
+            meta_name = arg.substr(16);
+            if(meta_name.empty())
+                return show_error("option '--metadata-json' must supply a file name");
+        }
+        else if(arg == "-d")
             comp.do_debug = true;
         else if(arg == "-n")
             comp.optimize = false;
@@ -303,16 +331,43 @@ int main(int argc, char **argv)
             }
         }
     }
+    if(next_is_meta)
+        return show_error("option '--metadata-json' must supply a file name");
+    comp.collect_meta = !meta_name.empty();
+    // Messages of the steps after the compilation (assembler and linker)
+    std::vector<meta_diag> tool_diags;
+    // Writes the metadata document; it is written on success and on failure,
+    // so a tool always finds the result of the last run.
+    std::string meta_target = target_name, meta_format, meta_labels;
+    std::vector<std::pair<std::string, std::string>> meta_artifacts;
+    auto finish = [&](int code) -> int {
+        if(meta_name.empty())
+            return code;
+        meta_info info = comp.meta;
+        info.diags.insert(info.diags.end(), tool_diags.begin(), tool_diags.end());
+        if(!metadata::write(meta_name, code == 0, info, meta_target, meta_format,
+                            code == 0 ? meta_labels : std::string(), meta_artifacts))
+        {
+            show_error("can't write metadata file '" + meta_name + "'");
+            return code ? code : 1;
+        }
+        return code;
+    };
+    auto fail = [&](const std::string &msg, const std::string &file) -> int {
+        tool_diags.push_back({file, 1, 1, 0, "error", "usage", msg});
+        return finish(show_error(msg));
+    };
     if(!bas_files.size() && !asm_files.size() && !link_files.size())
-        return show_error("missing input file name");
+        return fail("missing input file name", std::string());
     if(next_is_output)
-        return show_error("option '-o' must supply a file name");
+        return fail("option '-o' must supply a file name", std::string());
     // A program is compiled as a whole, so FUNC calls and variables can be
     // checked: other BASIC files are added with INCLUDE.
     if(bas_files.size() > 1 && !one_step)
-        return show_error("only one BASIC file can be linked into a program, '" +
-                          std::get<0>(bas_files[1]) + "' is the second one; add it with "
-                          "INCLUDE \"" + std::get<0>(bas_files[1]) + "\" instead");
+        return fail("only one BASIC file can be linked into a program, '" +
+                        std::get<0>(bas_files[1]) + "' is the second one; add it with "
+                        "INCLUDE \"" + std::get<0>(bas_files[1]) + "\" instead",
+                    std::get<0>(bas_files[1]));
 
     // Read target definition
     target tgt;
@@ -324,7 +379,8 @@ int main(int argc, char **argv)
     catch(std::exception &e)
     {
         std::cerr << e.what() << "\n";
-        return 1;
+        tool_diags.push_back({std::string(), 1, 1, 0, "error", "target", e.what()});
+        return finish(1);
     }
     std::string lib_name = os::compiler_path(tgt.lib());
     std::string cfg_file =
@@ -334,6 +390,11 @@ int main(int argc, char **argv)
     // Guess final exe file name
     if(link_files.size() && exe_name.empty())
         exe_name = os::add_extension(link_files[0], tgt.bin_ext());
+    meta_format = tgt.bin_ext().size() > 1 ? tgt.bin_ext().substr(1) : tgt.bin_ext();
+    // The debug information of the metadata needs the label file of the
+    // linker, also when the listing files are not requested.
+    const bool want_labels = do_listing || (comp.collect_meta && !link_files.empty());
+    const auto lbl_name = exe_name.empty() ? std::string() : os::add_extension(exe_name, ".lbl");
 
     // Compiles, assembles and links all files. Returns 0 on success, 1 on
     // compile or assemble errors and 2 on link errors.
@@ -368,6 +429,8 @@ int main(int argc, char **argv)
             auto e = os::prog_exec("ca65", args);
             if(e)
             {
+                tool_diags.push_back({asm_name, 1, 1, 0, "error", "assembler",
+                                      "can't assemble file, see the assembler messages"});
                 show_error("can't assemble file\n");
                 return 1;
             }
@@ -379,8 +442,8 @@ int main(int argc, char **argv)
             //$LD65" -C "$CFGFILE" "$@" -o "$XEX" -Ln "$LBL" "$FB.lib"
             std::cerr << "LINK " << exe_name << "\n";
             std::vector<std::string> args{"ld65", "-C", cfg_file, "-o", exe_name};
-            if(do_listing)
-                args.insert(args.end(), {"-Ln", os::add_extension(exe_name, ".lbl")});
+            if(want_labels)
+                args.insert(args.end(), {"-Ln", lbl_name});
             for(auto &l : link_opts)
                 args.push_back(l);
             for(auto &f : link_files)
@@ -485,14 +548,39 @@ int main(int argc, char **argv)
         e = build();
     }
     if(e == 2)
-        return show_error("can't link file\n");
+    {
+        tool_diags.push_back({bas_files.size() ? std::get<0>(bas_files[0]) : std::string(), 1, 1,
+                              0, "error", "linker",
+                              "can't link file, see the linker messages"});
+        show_error("can't link file\n");
+        return finish(1);
+    }
     if(e)
-        return e;
+        return finish(e);
+
+    // Describe the results before removing the intermediate files
+    if(link_files.size())
+    {
+        meta_labels = lbl_name;
+        meta_artifacts.emplace_back("executable", exe_name);
+        if(do_listing)
+            meta_artifacts.emplace_back("labels", lbl_name);
+    }
+    if(keep_temps || one_step)
+        for(auto &f : bas_files)
+            meta_artifacts.emplace_back("assembly", std::get<1>(f));
+    if(do_listing)
+        for(auto &f : asm_files)
+            meta_artifacts.emplace_back("listing", os::add_extension(std::get<1>(f), ".lst"));
+    int ret = finish(0);
 
     // Remove all intermediate files
     if(!keep_temps)
         for(auto &name: temp_files)
             os::remove_file(name);
+    // The label file was only needed to write the metadata
+    if(want_labels && !do_listing && link_files.size())
+        os::remove_file(lbl_name);
 
-    return 0;
+    return ret;
 }

@@ -7,7 +7,16 @@ export {
 };
 
 export type {
+    BuildRequest,
+    ClaudeStatus,
+    DebugRequest,
+    DebugSession,
+    DebugSnapshot,
+    DebugStop,
     Environment,
+    LintResult,
+    MemoryBlock,
+    RunRequest,
     SearchResult,
-    TerminalResult
+    TrustInfo
 } from "./models.js";

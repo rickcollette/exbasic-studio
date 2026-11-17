@@ -18,6 +18,7 @@
 
 // os.cc: Host OS functions
 #include "os.h"
+#include <cstdio>
 #include <memory>
 #include <sys/stat.h>
 
@@ -233,5 +234,26 @@ void os::remove_file(const std::string &path)
     _unlink(path.c_str());
 #else
     unlink(path.c_str());
+#endif
+}
+
+bool os::rename_file(const std::string &from, const std::string &to)
+{
+#ifdef _WIN32
+    return MoveFileExA(from.c_str(), to.c_str(), MOVEFILE_REPLACE_EXISTING) != 0;
+#else
+    return rename(from.c_str(), to.c_str()) == 0;
+#endif
+}
+
+std::string os::current_dir()
+{
+#ifdef _WIN32
+    char buf[MAX_PATH + 1];
+    DWORD n = GetCurrentDirectoryA(sizeof(buf), buf);
+    return (n > 0 && n < sizeof(buf)) ? std::string(buf, n) : std::string();
+#else
+    char buf[4096];
+    return getcwd(buf, sizeof(buf)) ? std::string(buf) : std::string();
 #endif
 }

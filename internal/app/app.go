@@ -4,6 +4,8 @@ package app
 import (
 	"fmt"
 	"io/fs"
+	"os"
+	"strconv"
 
 	"exbasicstudio/internal/studio"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -35,7 +37,11 @@ func Run(assets fs.FS) error {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
+		Windows: application.WindowsOptions{AdditionalBrowserArgs: debugBrowserArgs()},
 	})
+
+	// Operation, terminal and workspace events flow through one emitter.
+	studio.Attach(studioService, func(name string, data any) { wailsApp.Event.Emit(name, data) })
 
 	window := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:             "main",
@@ -61,4 +67,15 @@ func Run(assets fs.FS) error {
 		return fmt.Errorf("run application: %w", err)
 	}
 	return nil
+}
+
+// debugBrowserArgs lets developers and the end-to-end tests attach to the
+// real window. It is off unless EXBASIC_STUDIO_DEBUG_PORT names a port; the
+// web view then listens on the loopback interface only.
+func debugBrowserArgs() []string {
+	port, err := strconv.Atoi(os.Getenv("EXBASIC_STUDIO_DEBUG_PORT"))
+	if err != nil || port < 1024 || port > 65535 {
+		return nil
+	}
+	return []string{"--remote-debugging-port=" + strconv.Itoa(port)}
 }

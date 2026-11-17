@@ -901,7 +901,14 @@ AM_CONDITIONAL([WANT_EMUOS_ALTIRRA], test "$WANT_EMUOS_ALTIRRA" = "yes")
 
 if [[ "$a8_target" = libatari800 ]]; then
     WANT_MONITOR_ASSEMBLER=no
-    WANT_MONITOR_BREAK=no
+    # exBASIC Studio: the debugger helper single-steps the CPU core, which
+    # needs the code-breakpoint support of the monitor.
+    if [[ "$enable_monitorbreak" = "yes" ]]; then
+        WANT_MONITOR_BREAK=yes
+        AC_DEFINE(MONITOR_BREAK,1,[Define to activate code breakpoints and execution history.])
+    else
+        WANT_MONITOR_BREAK=no
+    fi
     WANT_MONITOR_BREAKPOINTS=no
     WANT_MONITOR_HINTS=no
     WANT_MONITOR_PROFILE=no

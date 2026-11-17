@@ -27,12 +27,11 @@ func prepareEOSHostDisk(launch emulator.Launch) (emulator.Launch, error) {
 	if err != nil {
 		return launch, fmt.Errorf("prepare EOS project disk: %w", err)
 	}
-	cacheDir := filepath.Join(filepath.Dir(launch.HostDir), ".exbasic-studio")
-	if err = os.MkdirAll(cacheDir, 0o755); err != nil {
-		return launch, fmt.Errorf("create EOS project disk cache: %w", err)
-	}
 	if launch.HostDisk == "" {
-		launch.HostDisk = filepath.Join(cacheDir, "eos-host.atr")
+		launch.HostDisk = filepath.Join(filepath.Dir(launch.HostDir), ".exbasic-studio", "eos-host.atr")
+	}
+	if err = os.MkdirAll(filepath.Dir(launch.HostDisk), 0o755); err != nil {
+		return launch, fmt.Errorf("create EOS project disk cache: %w", err)
 	}
 	paths, err := hostDiskPaths(launch.HostDir)
 	if err != nil {
@@ -46,6 +45,10 @@ func prepareEOSHostDisk(launch emulator.Launch) (emulator.Launch, error) {
 	return launch, nil
 }
 
+// maxHostDiskEntries bounds the folder copied onto the EOS host disk, so a
+// mistaken choice such as a whole drive fails at once.
+const maxHostDiskEntries = 4096
+
 func hostDiskPaths(root string) ([]string, error) {
 	paths := []string{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -53,6 +56,9 @@ func hostDiskPaths(root string) ([]string, error) {
 			return walkErr
 		}
 		if path != root {
+			if len(paths) >= maxHostDiskEntries {
+				return fmt.Errorf("the folder %s holds more than %d files and folders, too many for an EOS disk; choose a smaller H: folder", root, maxHostDiskEntries)
+			}
 			paths = append(paths, path)
 		}
 		return nil
@@ -66,7 +72,7 @@ func hostDiskPaths(root string) ([]string, error) {
 // synchronizeEOSHostDisk copies files created or changed by EOS back into H.
 // Host-only files are retained so stopping the emulator can never erase work.
 func synchronizeEOSHostDisk(launch emulator.Launch) error {
-	if launch.HostDisk == "" || launch.HostDir == "" || launch.HostTool == "" {
+	if launch.HostDeviceName != "D8:" || launch.HostDisk == "" || launch.HostDir == "" || launch.HostTool == "" {
 		return nil
 	}
 	view, err := atrexplorer.Catalog(launch.HostTool, launch.HostDisk)
@@ -93,9 +99,25 @@ func synchronizeEOSHostDisk(launch emulator.Launch) error {
 	return nil
 }
 
-func isProjectHostPath(rel string) bool {
+// isProjectHostPath reports whether the project path rel is the folder the
+// Atari sees as its host device, or lies inside it.
+func isProjectHostPath(root, hostDir, rel string) bool {
+	if root == "" || hostDir == "" {
+		return false
+	}
+	host, err := filepath.Rel(root, hostDir)
+	if err != nil {
+		return false
+	}
+	host = filepath.ToSlash(filepath.Clean(host))
+	if host == ".." || strings.HasPrefix(host, "../") || filepath.IsAbs(host) {
+		return false // the host folder is outside the project
+	}
+	if host == "." {
+		return true
+	}
 	clean := filepath.ToSlash(filepath.Clean(rel))
-	return strings.EqualFold(clean, "H") || (len(clean) > 2 && strings.EqualFold(clean[:2], "H/"))
+	return strings.EqualFold(clean, host) || (len(clean) > len(host) && strings.EqualFold(clean[:len(host)+1], host+"/"))
 }
 
 // withEOSHostMutation keeps the project's H folder and the EOS D8 image in
@@ -103,9 +125,15 @@ func isProjectHostPath(rel string) bool {
 // first, then the host mutation is applied, and finally a fresh image is
 // mounted without resetting the emulated machine.
 func (s *StudioService) withEOSHostMutation(paths []string, action func() error) (err error) {
+	s.mu.RLock()
+	root, hostDir := "", s.emulatorLaunch.HostDir
+	if s.active != nil {
+		root = s.active.Root
+	}
+	s.mu.RUnlock()
 	usesHostFolder := false
 	for _, rel := range paths {
-		if isProjectHostPath(rel) {
+		if isProjectHostPath(root, hostDir, rel) {
 			usesHostFolder = true
 			break
 		}

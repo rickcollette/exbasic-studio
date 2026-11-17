@@ -1,10 +1,11 @@
 //go:build windows
 
-// Package process configures background child processes for desktop use.
+// Package process configures and runs background child processes.
 package process
 
 import (
 	"os/exec"
+	"strconv"
 	"syscall"
 )
 
@@ -20,3 +21,18 @@ func Background(cmd *exec.Cmd) *exec.Cmd {
 	}
 	return cmd
 }
+
+// killTree ends a process and every process it started.
+func killTree(cmd *exec.Cmd) error {
+	if cmd.Process == nil {
+		return nil
+	}
+	killer := exec.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(cmd.Process.Pid))
+	Background(killer)
+	if err := killer.Run(); err != nil {
+		return cmd.Process.Kill()
+	}
+	return nil
+}
+
+func prepareTree(cmd *exec.Cmd) { Background(cmd) }

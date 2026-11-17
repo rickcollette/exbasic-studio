@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "metadata.h"
 #include <string>
 #include <vector>
 
@@ -45,6 +46,10 @@ class compiler
     bool show_text;
     unsigned short_text;
     std::vector<std::string> include_dirs;
+    // Collect the sources, messages, line labels and symbols for the
+    // metadata document (--metadata-json).
+    bool collect_meta;
+    meta_info meta;
 
     compiler();
     int compile_file(std::string input_filename, std::string output_filename,

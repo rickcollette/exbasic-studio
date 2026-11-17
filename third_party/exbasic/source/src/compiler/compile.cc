@@ -20,6 +20,8 @@
 
 #include <cctype>
 #include "compile.h"
+#include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <iostream>
 
@@ -278,6 +280,7 @@ compiler::compiler()
     show_text = false;
     short_text = 0;
     do_debug = false;
+    collect_meta = false;
 }
 
 // One line of source, after expanding INCLUDE
@@ -332,7 +335,8 @@ static bool is_include(const std::string &line, std::string &fname, bool &bad)
 // Reads a source file expanding INCLUDE directives
 static std::string read_source(const std::string &fname, std::vector<src_line> &out,
                                std::vector<std::string> &stack,
-                               const std::vector<std::string> &include_dirs)
+                               const std::vector<std::string> &include_dirs,
+                               std::vector<std::string> &files)
 {
     if(stack.size() > 16)
         return "too many nested INCLUDE files";
@@ -343,6 +347,8 @@ static std::string read_source(const std::string &fname, std::vector<src_line> &
     if(!ifile.is_open())
         return "can't open input file '" + fname + "'";
     stack.push_back(fname);
+    if(std::find(files.begin(), files.end(), fname) == files.end())
+        files.push_back(fname);
     int ln = 1;
     while(1)
     {
@@ -380,7 +386,7 @@ static std::string read_source(const std::string &fname, std::vector<src_line> &
             }
             if(found.empty())
                 return where + "INCLUDE file '" + inc + "' not found";
-            auto e = read_source(found, out, stack, include_dirs);
+            auto e = read_source(found, out, stack, include_dirs, files);
             if(e.size())
                 return e;
             // Keep the line count of the INCLUDE line
@@ -506,13 +512,25 @@ int compiler::compile_file(std::string iname, std::string output_filename,
 {
     std::ofstream ofile, lstfile;
 
+    // Each compilation collects its own metadata: with several candidate
+    // builds, the document describes the last one, that is the one kept.
+    meta.clear();
+    // Records a message for the metadata document
+    auto note = [&](const std::string &text, const std::string &file, const char *code) {
+        if(collect_meta)
+            meta.diags.push_back(metadata::diag_from_text(text, file, code));
+    };
+
     // Read the full source, expanding INCLUDE files
     std::vector<src_line> src;
     {
         std::vector<std::string> stack;
-        auto err = read_source(iname, src, stack, include_dirs);
+        auto err = read_source(iname, src, stack, include_dirs, meta.sources);
         if(err.size())
+        {
+            note(err, iname, "include");
             return show_error(err);
+        }
     }
 
     ofile.open(output_filename);
@@ -534,6 +552,7 @@ int compiler::compile_file(std::string iname, std::string output_filename,
         auto err = prescan_funcs(s, src);
         if(err.size())
         {
+            note(err, iname, "function");
             std::cerr << err << "\n";
             return 1;
         }
@@ -566,6 +585,18 @@ int compiler::compile_file(std::string iname, std::string output_filename,
                     min = e.pos - 50;
                 if(max - min > 76)
                     max = min + 76;
+            }
+            if(collect_meta)
+            {
+                // The range covers the word at the error position
+                size_t end = e.pos;
+                while(end < max && (isalnum((unsigned char)s.str[end]) || s.str[end] == '_' ||
+                                    s.str[end] == '$' || s.str[end] == '%'))
+                    end++;
+                if(end == e.pos && end < max)
+                    end++;
+                meta.diags.push_back({sl_line.file, sl_line.line, int(e.pos) + 1, int(end) + 1,
+                                      "error", "syntax", e.what()});
             }
             // Show error position, line and marker
             std::cerr << sl_line.file << ":" << sl_line.line << ":" << e.pos << ": "
@@ -614,10 +645,10 @@ int compiler::compile_file(std::string iname, std::string output_filename,
             }
             start += sl_line.nlines;
         }
-        if(j.type == LT_EXIT)
-            std::cerr << where << ": EXIT without loop\n";
-        else
-            std::cerr << where << ": unclosed " << get_loop_name(j.type) << "\n";
+        auto msg = j.type == LT_EXIT ? std::string("EXIT without loop")
+                                     : "unclosed " + get_loop_name(j.type);
+        note(where + ": " + msg, iname, "structure");
+        std::cerr << where << ": " << msg << "\n";
         return 1;
     }
 
@@ -628,6 +659,7 @@ int compiler::compile_file(std::string iname, std::string output_filename,
         auto err = exb_finalize(s, s.full_code());
         if(err.size())
         {
+            note(err, iname, "function");
             std::cerr << iname << ": " << err << "\n";
             return 1;
         }
@@ -736,9 +768,13 @@ int compiler::compile_file(std::string iname, std::string output_filename,
     // The jump table has two bytes per instruction used, and a few more for
     // the runtime.
     if(vars_size > 512)
-        return show_error(iname + ": too many variables, they use " + std::to_string(vars_size) +
-                          " bytes and the limit is 512 (integer and string variables use 2 "
-                          "bytes, floating point 6); use arrays for big tables");
+    {
+        auto msg = "too many variables, they use " + std::to_string(vars_size) +
+                   " bytes and the limit is 512 (integer and string variables use 2 "
+                   "bytes, floating point 6); use arrays for big tables";
+        note(msg, iname, "limit");
+        return show_error(iname + ": " + msg);
+    }
     int jumptab_size = 2 * (int(s.used_tokens().size()) + 8);
     ofile << "\t.export EXB_VARS, EXB_VARS_END, EXB_FREE\n"
           << "\t.segment \"" << (jumptab_size + vars_size <= 510 ? "HEAP" : "HEAPA") << "\"\n"
@@ -750,6 +786,29 @@ int compiler::compile_file(std::string iname, std::string output_filename,
         ofile << "\t.export " << var_symbol(v.second) << "\n";
         ofile << var_symbol(v.second) << ":\t.res " << get_vt_size(vtype) << "\t; "
               << get_vt_name(vtype) << " variable\n";
+        if(collect_meta)
+        {
+            // An array variable holds the address of its data
+            const char *type = vtype == VT_WORD           ? "word"
+                               : vtype == VT_STRING       ? "string"
+                               : vtype == VT_FLOAT        ? "float"
+                               : vtype == VT_ARRAY_WORD   ? "word-array"
+                               : vtype == VT_ARRAY_BYTE   ? "byte-array"
+                               : vtype == VT_ARRAY_STRING ? "string-array"
+                               : vtype == VT_ARRAY_FLOAT  ? "float-array"
+                                                          : "unknown";
+            // Variables of a FUNC are stored as "NN_FUNC_NAME", NN being the
+            // length of the name of the function: show them as FUNC.NAME
+            std::string shown = v.second;
+            if(shown.size() > 3 && isdigit((unsigned char)shown[0]) &&
+               isdigit((unsigned char)shown[1]) && shown[2] == '_')
+            {
+                size_t flen = size_t(shown[0] - '0') * 10 + size_t(shown[1] - '0');
+                if(flen > 0 && shown.size() > 3 + flen + 1 && shown[3 + flen] == '_')
+                    shown = shown.substr(3, flen) + "." + shown.substr(4 + flen);
+            }
+            meta.symbols.push_back({shown, type, var_symbol(v.second), get_vt_size(vtype)});
+        }
     }
     ofile << "EXB_VARS_END:\n"
              "\t.assert (EXB_VARS_END - (EXB_VARS & $FF00)) <= 512, error, "
@@ -768,12 +827,28 @@ int compiler::compile_file(std::string iname, std::string output_filename,
     // Map with all line labels already emitted, this is needed
     // to avoid duplicate labels on reordered lines.
     std::map<int, int> line_labels;
+    // Start line of each source line, to locate the file and line of the
+    // line numbers in the code (they count the lines of all the files).
+    std::vector<int> src_start;
+    {
+        int start = 1;
+        for(auto &sl_line : src)
+        {
+            src_start.push_back(start);
+            start += sl_line.nlines;
+        }
+    }
+    // Line that waits for its first instruction, to know the kind of code
+    int pending_line = -1;
     for(auto c : s.full_code())
     {
         if(c.linenum() != ln)
         {
             ln = c.linenum();
-            std::string lbl = "@exBASIC_LINE_" + std::to_string(ln);
+            // With metadata, the labels must reach the linker label file, so
+            // they can't be local to the assembly file.
+            std::string lbl =
+                (collect_meta ? "exb_dbg_line_" : "@exBASIC_LINE_") + std::to_string(ln);
             // If we already emitted this label, adds a numbered sufix
             if(line_labels.find(ln) != line_labels.end())
             {
@@ -784,6 +859,27 @@ int compiler::compile_file(std::string iname, std::string output_filename,
                 line_labels[ln] = 0;
             // Adds a label to facilitate debugging of resulting program
             ofile << lbl << ":\t; LINE " << ln << "\n";
+            pending_line = -1;
+            if(collect_meta && ln > 0 && !src_start.empty())
+            {
+                auto it = std::upper_bound(src_start.begin(), src_start.end(), ln);
+                if(it != src_start.begin())
+                {
+                    size_t idx = size_t(it - src_start.begin()) - 1;
+                    // The code after the last line (the end of the program)
+                    // does not belong to a source line.
+                    if(ln - src_start[idx] < src[idx].nlines)
+                        meta.lines.push_back(
+                            {src[idx].file, src[idx].line + ln - src_start[idx], lbl, false});
+                    if(ln - src_start[idx] < src[idx].nlines)
+                        pending_line = int(meta.lines.size()) - 1;
+                }
+            }
+        }
+        if(pending_line >= 0 && !c.is_label())
+        {
+            meta.lines[pending_line].native = c.is_asm();
+            pending_line = -1;
         }
         // Handle labels
         if(c.is_label())
@@ -810,6 +906,9 @@ int compiler::compile_file(std::string iname, std::string output_filename,
                         ofile << "\t.segment \"DATA\"\n";
                 }
                 ofile << "\t.export\t" << full_name << "\n";
+                if(collect_meta && it != s.labels.end())
+                    meta.symbols.push_back(
+                        {name, it->second.is_code() ? "function" : "data", full_name, 0});
             }
         }
         ofile << c.to_asm() << "\n";

@@ -18,6 +18,7 @@ export interface ATRConfig {
 }
 
 export interface Config {
+    "schemaVersion": number;
     "name": string;
     "entry": string;
     "target": string;
@@ -41,7 +42,9 @@ export interface View {
     "config": Config;
     "files": File[] | null;
     "directories": string[] | null;
-    "kind": string;
-    "remoteHost"?: string;
-    "remotePath"?: string;
+
+    /**
+     * HasConfig is false for a plain folder opened without project metadata.
+     */
+    "hasConfig": boolean;
 }

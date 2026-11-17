@@ -12,22 +12,75 @@ import (
 )
 
 type Profile struct {
-	ID          string        `json:"id"`
-	Name        string        `json:"name"`
-	Machine     string        `json:"machine"`
-	Memory      string        `json:"memory"`
-	Video       string        `json:"video"`
-	CPUSpeed    int           `json:"cpuSpeed"`
-	Basic       bool          `json:"basic"`
-	SIOPatch    bool          `json:"sioPatch"`
-	EOS         bool          `json:"eos"`
-	Ultimate1MB bool          `json:"ultimate1MB"`
-	Scale       int           `json:"scale"`
-	Media       string        `json:"media"`
-	Drives      []DriveConfig `json:"drives"`
-	RDevice     RDeviceConfig `json:"rDevice"`
-	IDE         IDEConfig     `json:"ide"`
-	Arguments   []string      `json:"arguments"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Machine     string `json:"machine"`
+	Memory      string `json:"memory"`
+	Video       string `json:"video"`
+	CPUSpeed    int    `json:"cpuSpeed"`
+	Basic       bool   `json:"basic"`
+	SIOPatch    bool   `json:"sioPatch"`
+	EOS         bool   `json:"eos"`
+	Ultimate1MB bool   `json:"ultimate1MB"`
+	// Cartridge is the primary (left) slot and Cartridge2 the secondary one:
+	// the pass-through connector on top of a SpartaDOS X cartridge.
+	// Basic and EOS are derived from the slots; they remain in the stored
+	// form so profiles written before the slots existed still load.
+	Cartridge  CartridgeSlot `json:"cartridge"`
+	Cartridge2 CartridgeSlot `json:"cartridge2"`
+	// HostDir is the folder the Atari sees as H: (D8: under EOS). Blank
+	// means the H folder of the open project. A relative path is taken from
+	// the project folder.
+	HostDir   string        `json:"hostDir"`
+	Scale     int           `json:"scale"`
+	Media     string        `json:"media"`
+	Drives    []DriveConfig `json:"drives"`
+	RDevice   RDeviceConfig `json:"rDevice"`
+	IDE       IDEConfig     `json:"ide"`
+	Arguments []string      `json:"arguments"`
+}
+
+// Cartridge kinds.
+const (
+	CartNone  = ""
+	CartBasic = "basic" // Atari BASIC (the built-in ROM on XL/XE machines)
+	CartEOS   = "eos"   // the EOS cartridge bundled with Studio
+	CartSDX   = "sdx"   // a SpartaDOS X image supplied by the user
+	CartImage = "image" // any other cartridge image
+)
+
+// MaxCartridgeType is the highest cartridge type number Atari800 knows.
+const MaxCartridgeType = 160
+
+// CartridgeSlot describes what is plugged into one cartridge slot.
+type CartridgeSlot struct {
+	Kind string `json:"kind"`
+	// Image is the cartridge file for the sdx and image kinds.
+	Image string `json:"image"`
+	// Type is the Atari800 cartridge type of a raw image. Zero means
+	// automatic: taken from a .car header, or from the file size where that
+	// is unambiguous.
+	Type int `json:"type"`
+}
+
+func normalizeSlot(slot CartridgeSlot, name string) (CartridgeSlot, error) {
+	slot.Kind = strings.ToLower(strings.TrimSpace(slot.Kind))
+	slot.Image = strings.TrimSpace(slot.Image)
+	switch slot.Kind {
+	case CartNone, "none":
+		return CartridgeSlot{}, nil
+	case CartBasic, CartEOS:
+		return CartridgeSlot{Kind: slot.Kind}, nil
+	case CartSDX, CartImage:
+		if slot.Image == "" {
+			return CartridgeSlot{}, fmt.Errorf("the %s cartridge slot needs an image file", name)
+		}
+		if slot.Type < 0 || slot.Type > MaxCartridgeType {
+			return CartridgeSlot{}, fmt.Errorf("unsupported cartridge type %d in the %s slot", slot.Type, name)
+		}
+		return slot, nil
+	}
+	return CartridgeSlot{}, fmt.Errorf("unsupported cartridge %q in the %s slot", slot.Kind, name)
 }
 
 type DriveConfig struct {
@@ -67,7 +120,7 @@ func DefaultProfileStore() *ProfileStore {
 func defaultProfiles() []Profile {
 	return []Profile{
 		{ID: "atari-800xl-ntsc", Name: "Atari 800XL (NTSC)", Machine: "xl", Memory: "64", Video: "ntsc", CPUSpeed: 100, SIOPatch: true, Scale: 2, Drives: blankDrives(), RDevice: defaultRDevice(), Arguments: []string{}},
-		{ID: "eos-800xl-ntsc", Name: "ExtendedOS / EOS", Machine: "xl", Memory: "64", Video: "ntsc", CPUSpeed: 100, SIOPatch: true, EOS: true, Scale: 2, Drives: blankDrives(), RDevice: defaultRDevice(), Arguments: []string{}},
+		{ID: "eos-800xl-ntsc", Name: "ExtendedOS / EOS", Machine: "xl", Memory: "64", Video: "ntsc", CPUSpeed: 100, SIOPatch: true, EOS: true, Cartridge: CartridgeSlot{Kind: CartEOS}, Scale: 2, Drives: blankDrives(), RDevice: defaultRDevice(), Arguments: []string{}},
 	}
 }
 
@@ -132,7 +185,40 @@ func normalizeProfile(profile Profile) (Profile, error) {
 	if profile.Scale < 1 || profile.Scale > 4 {
 		profile.Scale = 2
 	}
+	// Profiles saved before the cartridge slots existed carried two flags.
+	if strings.TrimSpace(profile.Cartridge.Kind) == "" && strings.TrimSpace(profile.Cartridge2.Kind) == "" {
+		switch {
+		case profile.EOS:
+			profile.Cartridge.Kind = CartEOS
+			if profile.Basic {
+				profile.Cartridge2.Kind = CartBasic
+			}
+		case profile.Basic:
+			profile.Cartridge.Kind = CartBasic
+		}
+	}
+	var slotErr error
+	if profile.Cartridge, slotErr = normalizeSlot(profile.Cartridge, "primary"); slotErr != nil {
+		return Profile{}, slotErr
+	}
+	if profile.Cartridge2, slotErr = normalizeSlot(profile.Cartridge2, "secondary"); slotErr != nil {
+		return Profile{}, slotErr
+	}
+	if profile.Cartridge.Kind == CartNone && profile.Cartridge2.Kind != CartNone {
+		// Nothing can sit in the secondary slot on its own.
+		profile.Cartridge, profile.Cartridge2 = profile.Cartridge2, CartridgeSlot{}
+	}
+	if profile.Cartridge.Kind == profile.Cartridge2.Kind && (profile.Cartridge.Kind == CartBasic || profile.Cartridge.Kind == CartEOS) {
+		profile.Cartridge2 = CartridgeSlot{}
+	}
+	profile.Basic = profile.Cartridge.Kind == CartBasic || profile.Cartridge2.Kind == CartBasic
+	// EOS drives the machine only from the primary slot.
+	profile.EOS = profile.Cartridge.Kind == CartEOS
 	profile.Media = strings.TrimSpace(profile.Media)
+	profile.HostDir = strings.TrimSpace(profile.HostDir)
+	if strings.ContainsRune(profile.HostDir, 0) {
+		return Profile{}, errors.New("the H: folder path is not valid")
+	}
 	drives := blankDrives()
 	for i := 0; i < len(profile.Drives) && i < len(drives); i++ {
 		drives[i] = profile.Drives[i]

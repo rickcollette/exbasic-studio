@@ -24,3 +24,11 @@ wails_windows_*.syso
 third_party/atari800/atari800-7.2.1/src/*.exe
 third_party/atari800/atari800-7.2.1/src/*.a
 third_party/exbasic/source/*.pdf
+third_party/exbasic/source/build/
+frontend/test-results/
+frontend/playwright-report/
+build/toolchain/
+build/stage/
+
+# Gradle caches created by editor tooling inside vendored sources
+.gradle/

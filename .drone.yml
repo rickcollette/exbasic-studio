@@ -1,8 +1,0 @@
-kind: pipeline
-type: docker
-name: test-go-core
-steps:
-  - name: test-core
-    image: golang:1.26
-    commands:
-      - go test ./internal/...

@@ -350,6 +350,7 @@ COMPILER_SRC=\
 	ifile.cc\
 	looptype.cc\
 	main.cc\
+	metadata.cc\
 	os.cc\
 	parser.cc\
 	parser-actions.cc\

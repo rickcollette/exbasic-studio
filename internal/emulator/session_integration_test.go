@@ -1,9 +1,11 @@
 package emulator_test
 
 import (
+	"context"
 	"encoding/base64"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -11,13 +13,11 @@ import (
 	"exbasicstudio/internal/compiler"
 	"exbasicstudio/internal/emulator"
 	"exbasicstudio/internal/project"
+	"exbasicstudio/internal/tools/toolstest"
 )
 
 func TestBundledEmulatorHardwareProfile(t *testing.T) {
-	helperPath := compiler.ToolPath("atari800-studio")
-	if _, err := os.Stat(helperPath); err != nil {
-		t.Skipf("Atari800 headless bridge unavailable: %v", err)
-	}
+	helperPath := toolstest.Tool(t, "atari800-studio")
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -71,27 +71,21 @@ func TestBundledEmulatorHardwareProfile(t *testing.T) {
 }
 
 func TestBundledToolchainRendersAFrame(t *testing.T) {
-	compilerPath := compiler.ToolPath("exbasic")
-	helperPath := compiler.ToolPath("atari800-studio")
-	if _, err := os.Stat(compilerPath); err != nil {
-		t.Skipf("bundled exBASIC compiler unavailable: %v", err)
-	}
-	if _, err := os.Stat(helperPath); err != nil {
-		t.Skipf("Atari800 headless bridge unavailable: %v", err)
-	}
+	toolstest.Tool(t, "exbasic")
+	helperPath := toolstest.Tool(t, "atari800-studio")
 	p, err := project.Create(t.TempDir(), "renderdemo")
 	if err != nil {
 		t.Fatal(err)
 	}
 	p.Config.Debug = false
-	result, err := compiler.Build(p)
+	result, err := compiler.Build(context.Background(), p, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !result.Success {
 		t.Fatalf("compile failed: %s", result.Output)
 	}
-	session, err := emulator.Start(emulator.Launch{Helper: helperPath, Artifact: result.Artifact, Profile: emulator.Profile{Machine: "xl", Video: "ntsc", SIOPatch: true}})
+	session, err := emulator.Start(emulator.Launch{Helper: helperPath, Artifact: result.Artifact("executable"), Profile: emulator.Profile{Machine: "xl", Video: "ntsc", SIOPatch: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,10 +100,7 @@ func TestBundledToolchainRendersAFrame(t *testing.T) {
 }
 
 func TestBundledEmulatorStartsWithoutProjectMedia(t *testing.T) {
-	helperPath := compiler.ToolPath("atari800-studio")
-	if _, err := os.Stat(helperPath); err != nil {
-		t.Skipf("Atari800 headless bridge unavailable: %v", err)
-	}
+	helperPath := toolstest.Tool(t, "atari800-studio")
 	session, err := emulator.Start(emulator.Launch{Helper: helperPath, HostDir: t.TempDir(), Profile: emulator.Profile{Machine: "xe", Video: "pal", Basic: true, SIOPatch: true}})
 	if err != nil {
 		t.Fatal(err)
@@ -176,22 +167,134 @@ func TestBundledEmulatorStartsWithoutProjectMedia(t *testing.T) {
 		}
 		_, _ = session.KeyState(key, false)
 	}
-	state, err = session.KeyState("Home", true)
+	state, err = session.KeyState("PageUp", true)
 	if err != nil || state.KeyChar != 0 || state.KeyCode != 0 {
 		t.Fatalf("unknown named key must not become a character: %#v err=%v", state, err)
+	}
+	// Atari keys without a PC key: Home is CLEAR (Shift+<), End is HELP.
+	for key, code := range map[string]int{"Home": 0x76, "End": 0x11} {
+		state, err = session.KeyState(key, true)
+		if err != nil || state.KeyChar != 0 || state.KeyCode != code {
+			t.Fatalf("%s mapping failed: %#v err=%v", key, state, err)
+		}
+		_, _ = session.KeyState(key, false)
+	}
+	// BREAK has no key code of its own. Run an endless BASIC loop and stop
+	// it with Pause: BASIC then prints STOPPED AT LINE 10.
+	press := func(key string) {
+		t.Helper()
+		if err := session.Key(key, true); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := session.Frame(); err != nil {
+			t.Fatal(err)
+		}
+		if err := session.Key(key, false); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := session.Frame(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, key := range strings.Split("10 GOTO 10|RUN|", "") {
+		if key == "|" {
+			key = "Enter"
+		}
+		press(key)
+	}
+	press("Pause")
+	screen := func() string {
+		t.Helper()
+		address, err := session.ReadMemory(0x58, 2) // SAVMSC
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := session.ReadMemory(int(address[0])|int(address[1])<<8, 960)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := make([]byte, len(data)) // internal screen codes to ASCII
+		for i, code := range data {
+			switch code &= 0x7f; {
+			case code < 0x40:
+				text[i] = code + 0x20
+			case code >= 0x60:
+				text[i] = code
+			default:
+				text[i] = ' '
+			}
+		}
+		return string(text)
+	}
+	if !strings.Contains(strings.ToUpper(screen()), "STOPPED AT LINE 10") {
+		t.Fatalf("Pause did not press BREAK; screen: %q", screen())
+	}
+}
+
+// The keyboard joystick drives joystick 0: the OS copies PORTA and TRIG0
+// into the STICK0 ($0278) and STRIG0 ($0284) shadows every vertical blank.
+func TestBundledEmulatorJoystick(t *testing.T) {
+	helperPath := toolstest.Tool(t, "atari800-studio")
+	session, err := emulator.Start(emulator.Launch{Helper: helperPath, HostDir: t.TempDir(), Profile: emulator.Profile{Machine: "xl", Video: "ntsc", Basic: true, SIOPatch: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Stop() })
+	if !slices.Contains(session.Hello().Capabilities, "joystick") {
+		t.Fatalf("helper does not advertise the joystick capability: %v", session.Hello().Capabilities)
+	}
+	shadows := func() (int, int) {
+		t.Helper()
+		if _, err := session.Frame(); err != nil {
+			t.Fatal(err)
+		}
+		stick, err := session.ReadMemory(0x0278, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		strig, err := session.ReadMemory(0x0284, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return int(stick[0]), int(strig[0])
+	}
+	// The shadows read 0 until the OS cold start has run its first VBI.
+	stick, strig := shadows()
+	for i := 0; i < 150 && stick == 0; i++ {
+		stick, strig = shadows()
+	}
+	if stick != 15 || strig != 1 {
+		t.Fatalf("idle joystick: STICK=%d STRIG=%d, want 15 and 1", stick, strig)
+	}
+	for _, want := range []int{14, 13, 11, 7, 10, 6, 9, 5} {
+		if err := session.Joystick(want, want == 10); err != nil {
+			t.Fatal(err)
+		}
+		stick, strig := shadows()
+		wantStrig := 1
+		if want == 10 {
+			wantStrig = 0
+		}
+		if stick != want || strig != wantStrig {
+			t.Fatalf("Joystick(%d): STICK=%d STRIG=%d, want %d and %d", want, stick, strig, want, wantStrig)
+		}
+	}
+	if err := session.ReleaseKeys(); err != nil {
+		t.Fatal(err)
+	}
+	if stick, strig := shadows(); stick != 15 || strig != 1 {
+		t.Fatalf("released joystick: STICK=%d STRIG=%d, want 15 and 1", stick, strig)
+	}
+	if err := session.Joystick(16, false); err == nil {
+		t.Fatal("an out-of-range STICK value was accepted")
 	}
 }
 
 func TestEOSCartridgeBootsWithEOSFSDisk(t *testing.T) {
-	compilerPath := compiler.ToolPath("exbasic")
-	helperPath := compiler.ToolPath("atari800-studio")
-	atrTool := compiler.ToolPath("mkatr-go")
-	eosCar := compiler.AssetPath("EOS.car")
-	for name, path := range map[string]string{"compiler": compilerPath, "Atari800 bridge": helperPath, "ATR tool": atrTool, "EOS cartridge": eosCar} {
-		if _, err := os.Stat(path); err != nil {
-			t.Skipf("%s unavailable: %v", name, err)
-		}
-	}
+	toolstest.Tool(t, "exbasic")
+	helperPath := toolstest.Tool(t, "atari800-studio")
+	atrTool := toolstest.Tool(t, "mkatr-go")
+	eosCar := toolstest.Asset(t, "EOS.car")
 	p, err := project.Create(t.TempDir(), "eosdemo")
 	if err != nil {
 		t.Fatal(err)
@@ -201,7 +304,7 @@ func TestEOSCartridgeBootsWithEOSFSDisk(t *testing.T) {
 	p.Config.ATR.Tool = atrTool
 	p.Config.ATR.Filesystem = "eos"
 	p.Config.ATR.Boot = false
-	result, err := compiler.Build(p)
+	result, err := compiler.Build(context.Background(), p, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +319,7 @@ func TestEOSCartridgeBootsWithEOSFSDisk(t *testing.T) {
 	if _, err = atrexplorer.Create(atrTool, hostDisk, "eos", []string{probe}); err != nil {
 		t.Fatal(err)
 	}
-	session, err := emulator.Start(emulator.Launch{Helper: helperPath, Artifact: result.DiskImage, EOSCar: eosCar, HostDir: t.TempDir(), HostDisk: hostDisk, HostDeviceName: "D8:", Profile: emulator.Profile{Machine: "xl", Video: "ntsc", SIOPatch: true, EOS: true}})
+	session, err := emulator.Start(emulator.Launch{Helper: helperPath, Artifact: result.Artifact("disk-image"), EOSCar: eosCar, HostDir: t.TempDir(), HostDisk: hostDisk, HostDeviceName: "D8:", Profile: emulator.Profile{Machine: "xl", Video: "ntsc", SIOPatch: true, EOS: true}})
 	if err != nil {
 		t.Fatal(err)
 	}

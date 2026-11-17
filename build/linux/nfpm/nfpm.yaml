@@ -6,19 +6,28 @@
 name: "exbasic-studio"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.0"
+version: "1.0.0-rc.2"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
 description: "A desktop IDE for exBASIC on Atari 8-bit systems"
 vendor: "exBASIC Studio Contributors"
-homepage: "https://wails.io"
+homepage: "https://github.com/exbasic/exbasic-studio"
 license: "MIT"
 release: "1"
 
 contents:
   - src: "./bin/exbasic-studio"
-    dst: "/usr/local/bin/exbasic-studio"
+    dst: "/usr/bin/exbasic-studio"
+  # Separately licensed tools (exBASIC, Atari800 helper, mkatr-go) and their
+  # licenses. The application finds them relative to its own location.
+  - src: "./build/stage/linux-${GOARCH}/tools/"
+    dst: "/usr/lib/exbasic-studio/tools"
+    type: tree
+  - src: "./LICENSE"
+    dst: "/usr/share/doc/exbasic-studio/LICENSE"
+  - src: "./THIRD_PARTY_NOTICES.md"
+    dst: "/usr/share/doc/exbasic-studio/THIRD_PARTY_NOTICES.md"
   - src: "./build/appicon.png"
     dst: "/usr/share/icons/hicolor/128x128/apps/exbasic-studio.png"
   - src: "./build/linux/exbasic-studio.desktop"
