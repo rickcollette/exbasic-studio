@@ -1,0 +1,102 @@
+# Local/private material
+/.private/**
+
+# Repository-level build and release output
+/build/out/
+/dist/
+
+# Autotools in-source output (generated Makefile.in/configure files are source)
+/ex800-1.0.0/Makefile
+/ex800-1.0.0/DOC/Makefile
+/ex800-1.0.0/src/Makefile
+/ex800-1.0.0/tools/Makefile
+/ex800-1.0.0/config.cache
+/ex800-1.0.0/config.log
+/ex800-1.0.0/config.status
+/ex800-1.0.0/src/config.h
+/ex800-1.0.0/src/stamp-h1
+**/.deps/
+**/.libs/
+**/autom4te.cache/
+
+# Compiler, linker and coverage output
+*.o
+*.obj
+*.a
+*.la
+*.lai
+*.lo
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.gcda
+*.gcno
+*.gcov
+
+# Locally built programs and generated runtime files
+/ex800-1.0.0/src/ex800
+/ex800-1.0.0/src/guess_settings
+/ex800-1.0.0/src/libatari800_test
+/ex800-1.0.0/tools/cart
+/.ex800.cfg
+/.ex800-*
+core
+core.*
+
+# Android/Gradle local state (keep gradle/wrapper/gradle-wrapper.jar)
+**/.gradle/
+/ex800-1.0.0/src/android/build/
+/ex800-1.0.0/src/android/local.properties
+
+# CMake/Ninja output
+**/CMakeCache.txt
+**/CMakeFiles/
+**/cmake_install.cmake
+**/build.ninja
+**/.ninja_deps
+**/.ninja_log
+
+# Native application bundles and debug symbols
+*.app/
+*.dSYM/
+*.pdb
+
+# Packaging output
+*.deb
+*.ddeb
+*.rpm
+*.AppImage
+/ex800-1.0.0/debian/.debhelper/
+/ex800-1.0.0/debian/ex800/
+/ex800-1.0.0/debian/files
+/ex800-1.0.0/debian/substvars
+/ex800-1.0.0/build-stamp
+
+# Editor and operating-system files
+*~
+*.bak
+*.orig
+*.rej
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.vscode/
+.github/
+
+# This repository is vendored in exBASIC Studio. Keep files that are tracked
+# by the ex800 repository visible to the parent repository even when the
+# parent's generic build/output patterns would otherwise ignore them.
+!/.github/
+!/.github/**
+!/.vscode/
+!/.vscode/**
+!/build/
+!/build/**
+!/ex800-1.0.0/.github/
+!/ex800-1.0.0/.github/**
+!/ex800-1.0.0/util/colormix.xex
+!/ex800-1.0.0/util/colors.xex
+!/ex800-1.0.0/util/hdevtest.lst

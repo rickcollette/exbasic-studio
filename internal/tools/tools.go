@@ -1,6 +1,6 @@
 // Package tools locates the separately licensed command-line programs and
 // data files that ship with exBASIC Studio: the exBASIC compiler
-// distribution, the Atari800 helper, mkatr-go and the EOS cartridge.
+// distribution, the ex800 helper, mkatr-go and the EOS cartridge.
 //
 // Packaged builds keep them in the application's resource directory. The
 // EXBASIC_STUDIO_TOOLS environment variable is an explicit override for

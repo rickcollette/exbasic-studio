@@ -42,7 +42,7 @@ mkdir -p bin
 # Source snapshots are created on Windows, whose tar metadata cannot represent
 # Unix execute bits. Restore the vendored configure script used directly by
 # the native toolchain build.
-chmod +x third_party/atari800/atari800-7.2.1/configure
+chmod +x third_party/ex800/ex800-1.0.0/configure
 task version:check
 task toolchain
 task linux:package EXTRA_TAGS="$EXTRA_TAGS"

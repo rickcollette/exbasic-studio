@@ -11,14 +11,14 @@ license, and the complete license text is installed beside the tools in
 | Component | Version | License | Source in this repository | Shipped as |
 |-----------|---------|---------|---------------------------|------------|
 | exBASIC compiler, with the CC65 assembler/linker/archiver (`ca65`, `ld65`, `ar65`) and `mkatr`/`lsatr` | 1.0.0 + Studio patch | GPL-2.0-or-later, with the FastBasic runtime exception | `third_party/exbasic/source` | `tools/exbasic/` |
-| Atari800 emulator core (`libatari800`) and the `atari800-studio` helper that links it | 7.2.1 | GPL-2.0-or-later | `third_party/atari800/atari800-7.2.1`, `third_party/atari800/studio-helper` | `tools/atari800-studio` |
+| ex800 emulator core (`libatari800`) and the `ex800-studio` helper that links it | 1.0.0 | GPL-2.0-or-later | `third_party/ex800/ex800-1.0.0`, `third_party/ex800/studio-helper` | `tools/ex800-studio` |
 | mkatr-go (Go port of dmsc/mkatr, with EOSFS support) | `2d1f341c` | GPL-2.0-only | `third_party/mkatrgo`, `cmd/mkatr-go` | `tools/mkatr-go` |
 | ExtendedOS source and EOS cartridge image | `983a8b0e` | MIT; see the vendored license | `third_party/exoperatingsystem`, `third_party/EOS.car` | `tools/EOS.car` |
 
-The Atari800 fork adds a 256K Rambo memory configuration (implemented with
-Altirra 4.40, GPL-2.0, as the compatibility reference) and enables the
-core's code-breakpoint support for the library target; see
-`third_party/atari800/NOTICE.md`. The exBASIC compiler is based on FastBasic
+ex800 is based on Atari800 7.2.1, removes Atari 5200 support, adds a 256K
+Rambo memory configuration (implemented with Altirra 4.40, GPL-2.0, as the
+compatibility reference), and enables the core's code-breakpoint support for
+the library target; see `third_party/ex800/NOTICE.md`. The exBASIC compiler is based on FastBasic
 by Daniel Serpell; see `third_party/exbasic/NOTICE.md`.
 
 The corresponding source for every GPL component is the pinned source tree

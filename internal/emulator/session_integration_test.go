@@ -17,14 +17,14 @@ import (
 )
 
 func TestBundledEmulatorHardwareProfile(t *testing.T) {
-	helperPath := toolstest.Tool(t, "atari800-studio")
+	helperPath := toolstest.Tool(t, "ex800-studio")
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	disk := filepath.Join(root, "third_party", "atari800", "atari800-7.2.1", "test", "acid800.atr")
+	disk := filepath.Join(root, "third_party", "ex800", "ex800-1.0.0", "test", "acid800.atr")
 	if _, err = os.Stat(disk); err != nil {
-		t.Skipf("Atari800 test disk unavailable: %v", err)
+		t.Skipf("ex800 test disk unavailable: %v", err)
 	}
 	ide := filepath.Join(t.TempDir(), "ide-plus.img")
 	file, err := os.Create(ide)
@@ -61,6 +61,9 @@ func TestBundledEmulatorHardwareProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Stop() })
+	if core := session.Hello().Core; !strings.HasPrefix(strings.ToLower(core), "ex800") {
+		t.Fatalf("unexpected emulator core %q", core)
+	}
 	frame, err := session.Frame()
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +75,7 @@ func TestBundledEmulatorHardwareProfile(t *testing.T) {
 
 func TestBundledToolchainRendersAFrame(t *testing.T) {
 	toolstest.Tool(t, "exbasic")
-	helperPath := toolstest.Tool(t, "atari800-studio")
+	helperPath := toolstest.Tool(t, "ex800-studio")
 	p, err := project.Create(t.TempDir(), "renderdemo")
 	if err != nil {
 		t.Fatal(err)
@@ -100,7 +103,7 @@ func TestBundledToolchainRendersAFrame(t *testing.T) {
 }
 
 func TestBundledEmulatorStartsWithoutProjectMedia(t *testing.T) {
-	helperPath := toolstest.Tool(t, "atari800-studio")
+	helperPath := toolstest.Tool(t, "ex800-studio")
 	session, err := emulator.Start(emulator.Launch{Helper: helperPath, HostDir: t.TempDir(), Profile: emulator.Profile{Machine: "xe", Video: "pal", Basic: true, SIOPatch: true}})
 	if err != nil {
 		t.Fatal(err)
@@ -234,7 +237,7 @@ func TestBundledEmulatorStartsWithoutProjectMedia(t *testing.T) {
 // The keyboard joystick drives joystick 0: the OS copies PORTA and TRIG0
 // into the STICK0 ($0278) and STRIG0 ($0284) shadows every vertical blank.
 func TestBundledEmulatorJoystick(t *testing.T) {
-	helperPath := toolstest.Tool(t, "atari800-studio")
+	helperPath := toolstest.Tool(t, "ex800-studio")
 	session, err := emulator.Start(emulator.Launch{Helper: helperPath, HostDir: t.TempDir(), Profile: emulator.Profile{Machine: "xl", Video: "ntsc", Basic: true, SIOPatch: true}})
 	if err != nil {
 		t.Fatal(err)
@@ -292,7 +295,7 @@ func TestBundledEmulatorJoystick(t *testing.T) {
 
 func TestEOSCartridgeBootsWithEOSFSDisk(t *testing.T) {
 	toolstest.Tool(t, "exbasic")
-	helperPath := toolstest.Tool(t, "atari800-studio")
+	helperPath := toolstest.Tool(t, "ex800-studio")
 	atrTool := toolstest.Tool(t, "mkatr-go")
 	eosCar := toolstest.Asset(t, "EOS.car")
 	p, err := project.Create(t.TempDir(), "eosdemo")

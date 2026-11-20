@@ -1,0 +1,13 @@
+* text=auto
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+configure text eol=lf
+ex800-1.0.0/compile text eol=lf
+ex800-1.0.0/config.guess text eol=lf
+ex800-1.0.0/config.sub text eol=lf
+ex800-1.0.0/configure text eol=lf
+ex800-1.0.0/depcomp text eol=lf
+ex800-1.0.0/install-sh text eol=lf
+ex800-1.0.0/missing text eol=lf
+ex800-1.0.0/src/config.h.in text eol=lf

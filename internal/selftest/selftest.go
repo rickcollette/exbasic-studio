@@ -77,7 +77,7 @@ func Run(out io.Writer) error {
 	if !ok {
 		return errors.New("the bundled tools directory was not found next to the application")
 	}
-	for _, name := range []string{"exbasic", "atari800-studio", "mkatr-go"} {
+	for _, name := range []string{"exbasic", "ex800-studio", "mkatr-go"} {
 		if _, found := tools.Bundled(name); !found {
 			return fmt.Errorf("bundled tool %q is missing from %s", name, root)
 		}
@@ -85,7 +85,7 @@ func Run(out io.Writer) error {
 	if _, found := tools.Asset("EOS.car"); !found {
 		return fmt.Errorf("EOS.car is missing from %s", root)
 	}
-	for _, license := range []string{"atari800-COPYING.txt", "exbasic-LICENSE.txt", "mkatr-go-LICENSE.txt"} {
+	for _, license := range []string{"ex800-COPYING.txt", "exbasic-LICENSE.txt", "mkatr-go-LICENSE.txt"} {
 		if _, err := os.Stat(filepath.Join(root, "licenses", license)); err != nil {
 			return fmt.Errorf("license notice %s is not shipped with the tools", license)
 		}

@@ -17,12 +17,17 @@ import (
 )
 
 // emulatorHelper maps the project's emulator setting to the helper program.
-// Older projects named the stock emulator; those use the bundled helper.
+// Older projects named the stock Atari800 emulator; those use the bundled
+// ex800 helper too.
 func emulatorHelper(configured string) string {
 	helper := configured
 	base := strings.TrimSuffix(strings.ToLower(filepath.Base(helper)), ".exe")
-	if helper == "" || base == "atari800" || base == "atari800-headless" {
-		helper = "atari800-studio"
+	if helper == "" {
+		base = ""
+	}
+	switch base {
+	case "", "atari800", "atari800-headless", "atari800-studio", "ex800", "ex800-headless":
+		helper = "ex800-studio"
 	}
 	return tools.Path(helper)
 }
@@ -135,7 +140,7 @@ func (s *StudioService) EmulatorRestart() (emulator.State, error) {
 	launch := s.emulatorLaunch
 	s.mu.RUnlock()
 	if launch.Helper == "" {
-		return emulator.State{}, errors.New("start Atari800 before restarting it")
+		return emulator.State{}, errors.New("start ex800 before restarting it")
 	}
 	if err := s.startEmulator(launch); err != nil {
 		return emulator.State{}, err
@@ -158,7 +163,7 @@ func (s *StudioService) EmulatorFrame() (emulator.Frame, error) {
 	launch := s.emulatorLaunch
 	s.mu.RUnlock()
 	if session == nil {
-		return emulator.Frame{}, errors.New("Atari800 is not running")
+		return emulator.Frame{}, errors.New("ex800 is not running")
 	}
 	frame, err := session.Frame()
 	if err != nil {
@@ -195,7 +200,7 @@ func (s *StudioService) EmulatorKey(key string, down bool) error {
 	session := s.emulator
 	s.mu.RUnlock()
 	if session == nil {
-		return errors.New("Atari800 is not running")
+		return errors.New("ex800 is not running")
 	}
 	return session.Key(key, down)
 }
@@ -208,7 +213,7 @@ func (s *StudioService) EmulatorJoystick(stick int, trigger bool) error {
 	session := s.emulator
 	s.mu.RUnlock()
 	if session == nil {
-		return errors.New("Atari800 is not running")
+		return errors.New("ex800 is not running")
 	}
 	return session.Joystick(stick, trigger)
 }

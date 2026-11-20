@@ -14,7 +14,7 @@ time you save settings.
   "target": "atari",
   "output": "build/game.xex",
   "compiler": "exbasic",
-  "emulator": "atari800-studio",
+  "emulator": "ex800-studio",
   "native": "auto",
   "debug": true,
   "includePaths": ["src", "lib"],
@@ -61,8 +61,8 @@ Three behaviours changed for existing projects:
   created by the alpha are treated like any other existing folder.
 - The `H` folder is no longer created when a folder is opened; it appears
   on the first trusted run.
-- `"emulator": "atari800"` and `"atari800-headless"` from early alphas are
-  treated as the bundled helper.
+- `"emulator": "atari800"`, `"atari800-headless"`, and `"atari800-studio"`
+  from earlier releases are treated as aliases for the bundled ex800 helper.
 
 ## Fields
 

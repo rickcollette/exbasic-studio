@@ -20,7 +20,7 @@ Notes:
 
 ## What is bundled
 
-Every artifact contains the exBASIC compiler distribution, the Atari800
+Every artifact contains the exBASIC compiler distribution, the ex800
 helper, mkatr-go and the EOS cartridge, built from the sources in this
 repository for that platform, with their licenses in `tools/licenses/`.
 

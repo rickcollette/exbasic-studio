@@ -1,5 +1,5 @@
 // Where the Atari keys are on a PC or Mac keyboard in the emulator. The map
-// mirrors the Atari800 helper (third_party/atari800/studio-helper/main.c):
+// mirrors the ex800 helper (third_party/ex800/studio-helper/main.c):
 // printable characters reach the Atari as the same character, so Shift+2
 // types @ on a US keyboard and @ on the Atari; named keys become the Atari
 // keys listed here. Layouts are US ANSI; keys are KeyboardEvent.code values.

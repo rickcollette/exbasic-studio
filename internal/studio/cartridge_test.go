@@ -53,7 +53,7 @@ func TestCartridgeTypeOfAnImage(t *testing.T) {
 }
 
 func TestCartridgeSlotsBecomeLaunchSettings(t *testing.T) {
-	toolstest.Tool(t, "atari800-studio")
+	toolstest.Tool(t, "ex800-studio")
 	eos, _ := tools.Asset("EOS.car")
 	raw := filepath.Join(t.TempDir(), "sdx.rom")
 	if err := os.WriteFile(raw, make([]byte, 128<<10), 0o644); err != nil {
@@ -115,7 +115,7 @@ func bootUntil(t *testing.T, launch emulator.Launch, want string) string {
 // A cartridge image in the primary slot is inserted by the helper and takes
 // control of the machine. The bundled EOS image stands in for any image.
 func TestCartridgeImageBootsFromThePrimarySlot(t *testing.T) {
-	helper := toolstest.Tool(t, "atari800-studio")
+	helper := toolstest.Tool(t, "ex800-studio")
 	image, ok := tools.Asset("EOS.car")
 	if !ok {
 		t.Skip("EOS.car is not available")
@@ -133,7 +133,7 @@ func TestCartridgeImageBootsFromThePrimarySlot(t *testing.T) {
 
 // Atari BASIC in a slot switches on the BASIC of the machine.
 func TestAtariBasicSlotStartsBasic(t *testing.T) {
-	helper := toolstest.Tool(t, "atari800-studio")
+	helper := toolstest.Tool(t, "ex800-studio")
 	store := emulator.NewProfileStore(filepath.Join(t.TempDir(), "profiles.json"))
 	profile, err := store.Save(emulator.Profile{Name: "BASIC", Machine: "xl", SIOPatch: true, Cartridge: emulator.CartridgeSlot{Kind: emulator.CartBasic}})
 	if err != nil {

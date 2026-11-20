@@ -21,13 +21,13 @@ includes:
 
 tasks:
   toolchain:
-    desc: Build exBASIC, Atari800, atari800-studio and mkatr-go from pinned sources and stage them
+    desc: Build exBASIC, ex800, ex800-studio and mkatr-go from pinned sources and stage them
     sources:
       - third_party/exbasic/source/src/**/*
       - third_party/exbasic/source/Makefile
-      - third_party/atari800/atari800-7.2.1/src/**/*
-      - third_party/atari800/atari800-7.2.1/configure
-      - third_party/atari800/studio-helper/main.c
+      - third_party/ex800/ex800-1.0.0/src/**/*
+      - third_party/ex800/ex800-1.0.0/configure
+      - third_party/ex800/studio-helper/main.c
       - third_party/mkatrgo/**/*.go
       - third_party/mkatrgo/go.mod
       - third_party/mkatrgo/go.sum

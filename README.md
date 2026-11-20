@@ -2,7 +2,7 @@
 
 A desktop IDE for [exBASIC](third_party/exbasic/source/README.md) on Atari
 8-bit computers: edit, build, run and debug in one window, with the
-compiler, an Atari800-based emulator and ATR disk tools included.
+compiler, the ex800 emulator and ATR disk tools included.
 
 ## NOTE ON CONTRIBUTORS
 
@@ -18,8 +18,8 @@ Claude is noted as a contributor. I have tried using claude as a way of managing
   workspace symbols, split view and live diagnostics from the real compiler.
 - **Build and run** with streamed output, cancellation and structured
   problems. Optional packaging into bootable SDFS or EOSFS ATR images.
-- **Embedded Atari800** in an editor tab: machine profiles (400/800, XL, XE,
-  5200, memory expansions, PAL/NTSC), floppy drives, the `H1:` host device
+- **Embedded ex800** in an editor tab: machine profiles (400/800, XL, XE,
+  memory expansions, PAL/NTSC), floppy drives, the `H1:` host device
   mapped to the project, R: serial devices, IDE Plus and the EOS cartridge.
   A keyboard joystick (Q W E / A D / Z X C, arrows or keypad; Space, Numpad 0
   or Ctrl to fire) and a *Keyboard* panel that shows where every Atari key
@@ -121,7 +121,7 @@ Remote Linux/macOS release builds and GitHub publishing are described in
 
 exBASIC Studio uses the custom Flesh and Bone License (see [LICENSE](LICENSE)).
 
-The exBASIC compiler, the Atari800 emulator core with its helper, and
+The exBASIC compiler, the ex800 emulator core with its helper, and
 mkatr-go are GPL programs. They are built from the sources in
 `third_party/` and run as separate processes; they are not linked into the
 Studio executable. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -49,7 +49,7 @@ const (
 	CartImage = "image" // any other cartridge image
 )
 
-// MaxCartridgeType is the highest cartridge type number Atari800 knows.
+// MaxCartridgeType is the highest cartridge type number ex800 knows.
 const MaxCartridgeType = 160
 
 // CartridgeSlot describes what is plugged into one cartridge slot.
@@ -140,7 +140,7 @@ func normalizeProfile(profile Profile) (Profile, error) {
 		profile.Machine = "xl"
 	}
 	switch profile.Machine {
-	case "atari", "xl", "xe", "5200":
+	case "atari", "xl", "xe":
 	default:
 		return Profile{}, fmt.Errorf("unsupported Atari machine %q", profile.Machine)
 	}
@@ -163,9 +163,6 @@ func normalizeProfile(profile Profile) (Profile, error) {
 	case "64", "128", "256", "320-compy", "320-rambo", "1088":
 	default:
 		return Profile{}, fmt.Errorf("unsupported Atari memory configuration %q", profile.Memory)
-	}
-	if profile.Machine == "5200" {
-		profile.Memory = "16"
 	}
 	if profile.CPUSpeed == 0 {
 		profile.CPUSpeed = 100
@@ -282,7 +279,7 @@ func (s *ProfileStore) Load() ([]Profile, error) {
 	}
 	var profiles []Profile
 	if err = json.Unmarshal(data, &profiles); err != nil {
-		return nil, fmt.Errorf("read Atari800 profiles: %w", err)
+		return nil, fmt.Errorf("read ex800 profiles: %w", err)
 	}
 	if len(profiles) == 0 {
 		return defaultProfiles(), nil
@@ -358,7 +355,7 @@ func (s *ProfileStore) Delete(id string) error {
 		}
 	}
 	if len(next) == 0 {
-		return errors.New("at least one Atari800 profile is required")
+		return errors.New("at least one ex800 profile is required")
 	}
 	return s.write(next)
 }
@@ -376,7 +373,7 @@ func (s *ProfileStore) Find(id string) (Profile, error) {
 			return profile, nil
 		}
 	}
-	return Profile{}, fmt.Errorf("Atari800 profile %q was not found", id)
+	return Profile{}, fmt.Errorf("ex800 profile %q was not found", id)
 }
 
 func (s *ProfileStore) write(profiles []Profile) error {

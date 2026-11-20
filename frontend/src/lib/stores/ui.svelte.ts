@@ -12,7 +12,7 @@ export const activities: { id: Activity; icon: string; label: string }[] = [
   { id: 'atr', icon: 'atari-folder', label: 'ATR Explorer' },
   { id: 'source', icon: 'source-control', label: 'Source Control' },
   { id: 'run', icon: 'debug-alt', label: 'Run and Debug' },
-  { id: 'emulator', icon: 'device-desktop', label: 'Atari800 Emulator' },
+  { id: 'emulator', icon: 'device-desktop', label: 'ex800 Emulator' },
   { id: 'sprites', icon: 'paintcan', label: 'Sprite Studio' },
   { id: 'manual', icon: 'book', label: 'exBASIC Manual' },
 ];

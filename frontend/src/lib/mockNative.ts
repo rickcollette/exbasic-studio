@@ -42,7 +42,7 @@ const BINARY_MARKER = '\u0000bin:';
 
 function defaultConfig(name: string): ProjectConfig {
   return {
-    schemaVersion: 1, name, entry: 'src/main.bas', target: 'atari', output: `build/${name}.xex`, compiler: 'exbasic', emulator: 'atari800-studio',
+    schemaVersion: 1, name, entry: 'src/main.bas', target: 'atari', output: `build/${name}.xex`, compiler: 'exbasic', emulator: 'ex800-studio',
     native: 'auto', debug: true, includePaths: ['src', 'lib'], assembly: [],
     atr: { enabled: false, tool: 'mkatr-go', filesystem: 'sparta', output: `build/${name}.atr`, boot: true, exactSize: false, minimumSize: 0, bootPage: 7, files: [] },
   };
@@ -189,7 +189,7 @@ export function createMockNative(): MockNative {
   }
 
   const studio: Record<string, (...args: any[]) => unknown> = {
-    GetEnvironment: () => ({ version: '1.0.0-test', platform: 'test/mock', workingDir: '/home/tester', compilerHint: '/tools/exbasic/exbasic', emulatorHint: '/tools/atari800-studio', toolsAvailable: true, toolsNote: '' }),
+    GetEnvironment: () => ({ version: '1.0.0-test', platform: 'test/mock', workingDir: '/home/tester', compilerHint: '/tools/exbasic/exbasic', emulatorHint: '/tools/ex800-studio', toolsAvailable: true, toolsNote: '' }),
     AppState: () => snapshot(),
     SaveLayout: (value: LayoutState) => { layout = { ...value }; },
     SetPreference: (key: string, value: string) => { if (value) preferences[key] = value; else delete preferences[key]; },
@@ -438,7 +438,7 @@ export function createMockNative(): MockNative {
     EmulatorRestart: () => { emulator.frame = 0; return { running: true, profileId: emulator.profileId, artifact: emulator.artifact }; },
     EmulatorStatus: () => ({ running: emulator.running, profileId: emulator.profileId, artifact: emulator.artifact }),
     EmulatorFrame: () => {
-      if (!emulator.running) throw new Error('Atari800 is not running');
+      if (!emulator.running) throw new Error('ex800 is not running');
       if (!debug.stopped) emulator.frame += 4;
       if (debug.active && debug.pendingStop) {
         const { path, line, reason } = debug.pendingStop;

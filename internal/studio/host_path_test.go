@@ -37,7 +37,7 @@ func TestProjectPathsInsideTheHostFolder(t *testing.T) {
 // A folder chosen in the profile is what the machine gets as H1:, and under
 // EOS as D8:, with the disk image kept away from that folder.
 func TestEmulatorStartsWithTheChosenHostFolder(t *testing.T) {
-	toolstest.Tool(t, "atari800-studio")
+	toolstest.Tool(t, "ex800-studio")
 	toolstest.Tool(t, "mkatr-go")
 	s, _ := newService(t)
 	parent := t.TempDir()

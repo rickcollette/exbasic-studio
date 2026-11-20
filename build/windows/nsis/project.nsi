@@ -36,7 +36,7 @@ Unicode true
 !endif
 
 ## The build passes the VERSION file as INFO_PRODUCTVERSION_FULL (for example
-## 1.0.0-rc.2). It is what Apps & features shows; wails_tools.nsh writes
+## 1.0.0-rc.3). It is what Apps & features shows; wails_tools.nsh writes
 ## INFO_PRODUCTVERSION there, so it must be the full version, not its default.
 !ifdef INFO_PRODUCTVERSION_FULL
     !ifndef INFO_PRODUCTVERSION

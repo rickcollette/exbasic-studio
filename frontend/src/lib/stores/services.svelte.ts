@@ -1,7 +1,6 @@
 // Feature stores for Git, the emulator, terminal sessions, the ATR explorer
 // and the manual.
 import { native, errorMessage, type ATRView, type EmulatorProfile, type GitBranch, type GitConflict, type GitRemote, type GitStatus, type ManualHit, type TerminalEvent, type TerminalInfo } from '../native';
-import { SvelteSet } from 'svelte/reactivity';
 import { KeyboardJoystick, NEUTRAL, isJoystickKey } from '../joystick';
 import type { UIStore } from './ui.svelte';
 import type { WorkspaceStore } from './workspace.svelte';
@@ -157,7 +156,7 @@ export class GitStore {
 
 function blankProfile(): EmulatorProfile {
   return {
-    id: '', name: 'New Atari800 Profile', machine: 'xl', memory: '64', video: 'ntsc', cpuSpeed: 100, basic: false, sioPatch: true,
+    id: '', name: 'New ex800 Profile', machine: 'xl', memory: '64', video: 'ntsc', cpuSpeed: 100, basic: false, sioPatch: true,
     eos: false, ultimate1MB: false, scale: 2, media: '', hostDir: '',
     cartridge: { kind: '', image: '', type: 0 }, cartridge2: { kind: '', image: '', type: 0 },
     drives: Array.from({ length: 4 }, () => ({ image: '', enabled: false, readOnly: false })),
@@ -188,7 +187,7 @@ export class EmulatorStore {
 
   /** KeyboardEvent.code of the keys held on the emulator screen, for the
    * Keyboard panel. */
-  held = new SvelteSet<string>();
+  held = $state<string[]>([]);
 
   private pad = new KeyboardJoystick();
   private joystickSending = false;
@@ -255,10 +254,10 @@ export class EmulatorStore {
   }
 
   async start(): Promise<void> {
-    await this.ui.task('Starting Atari800', async () => {
+    await this.ui.task('Starting ex800', async () => {
       if (!this.draft) await this.load();
       const profile = await this.saveProfile();
-      if (!profile) throw new Error('No Atari800 profile is available');
+      if (!profile) throw new Error('No ex800 profile is available');
       const state = await native().studio.EmulatorStart(profile.id, profile.media);
       this.running = state.running;
       this.started(state.hostDeviceName ?? '');
@@ -269,9 +268,9 @@ export class EmulatorStore {
     clearTimeout(this.timer);
     try {
       await native().studio.EmulatorStop();
-      this.ui.status = 'Atari800 stopped; project disk synchronized';
+      this.ui.status = 'ex800 stopped; project disk synchronized';
     } catch (error) {
-      this.ui.status = `Atari800 stopped: ${errorMessage(error)}`;
+      this.ui.status = `ex800 stopped: ${errorMessage(error)}`;
     } finally {
       this.running = false; this.image = ''; this.hostDeviceName = '';
       this.onWorkspaceChanged?.();
@@ -301,8 +300,8 @@ export class EmulatorStore {
     } catch (error) {
       this.running = false;
       this.image = '';
-      this.ui.status = 'Atari800 stopped unexpectedly';
-      this.ui.appendOutput(`\nAtari800 stopped: ${errorMessage(error)}\nUse Start to run it again.\n`);
+      this.ui.status = 'ex800 stopped unexpectedly';
+      this.ui.appendOutput(`\nex800 stopped: ${errorMessage(error)}\nUse Start to run it again.\n`);
     } finally {
       this.polling = false;
       if ((this.visible || this.keepRunning) && this.running) this.timer = setTimeout(() => void this.poll(), 66);
@@ -355,13 +354,13 @@ export class EmulatorStore {
   /** Records a key held on the emulator screen. */
   markHeld(code: string, down: boolean): void {
     if (!code) return;
-    if (down) this.held.add(code);
-    else this.held.delete(code);
+    if (down && !this.held.includes(code)) this.held = [...this.held, code];
+    else if (!down) this.held = this.held.filter(held => held !== code);
   }
 
   async releaseKeys(): Promise<void> {
     // The helper also centres the joystick and releases fire.
-    this.held.clear();
+    this.held = [];
     this.pad.clear();
     this.stick = NEUTRAL;
     this.trigger = false;

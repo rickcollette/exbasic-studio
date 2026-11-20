@@ -1,0 +1,80 @@
+name: Cross-platform build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-x86_64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends \
+            build-essential libsdl2-dev zlib1g-dev libpng-dev
+      - name: Build and package
+        run: build/tools/build-release.sh linux-x86_64
+      - name: Run Acid800 regression suite
+        run: make -C build/out/linux-x86_64/app check
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ex800-1.0.0-linux-x86_64
+          path: dist/ex800-1.0.0-linux-x86_64.tar.gz
+          if-no-files-found: error
+
+  windows-x86_64:
+    runs-on: windows-2025
+    steps:
+      - name: Preserve Unix line endings
+        shell: pwsh
+        run: git config --global core.autocrlf input
+      - uses: actions/checkout@v7
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            autoconf
+            automake
+            make
+            zip
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-zlib
+            mingw-w64-ucrt-x86_64-libpng
+      - name: Build and package
+        shell: msys2 {0}
+        run: build/tools/build-release.sh windows-x86_64
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ex800-1.0.0-windows-x86_64
+          path: dist/ex800-1.0.0-windows-x86_64.zip
+          if-no-files-found: error
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            target: macos-x86_64
+          - runner: macos-15
+            target: macos-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: brew install sdl2 libpng dylibbundler
+      - name: Build and package
+        run: build/tools/build-release.sh "${{ matrix.target }}"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ex800-1.0.0-${{ matrix.target }}
+          path: dist/ex800-1.0.0-${{ matrix.target }}.tar.gz
+          if-no-files-found: error

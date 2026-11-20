@@ -6,6 +6,15 @@ All changes to exBASIC Studio are here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.3]
+
+### Changed
+
+- Replaced the bundled Atari800 7.2.1 emulator with the vendored ex800 1.0.0
+  core and `ex800-studio` helper. Existing Atari800 project-setting names
+  remain compatibility aliases. Atari 5200 profiles are no longer available,
+  matching ex800's supported machines.
+
 ### Added
 
 - **Sprite Studio.** A new activity-bar view and editor for player/missile
@@ -30,6 +39,13 @@ All changes to exBASIC Studio are here. The format follows
 
 - The project now uses the custom Flesh and Bone License instead of MIT. Read
   `LICENSE` before redistributing a modified version.
+
+### Fixed
+
+- The Keyboard panel now refreshes its held-key visualization reliably while
+  emulator keys are pressed and released.
+- Windows-origin source snapshots preserve the ex800 Autotools line endings
+  and executable permissions required by Linux and macOS release builds.
 
 ### Removed
 

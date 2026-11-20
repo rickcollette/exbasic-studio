@@ -27,6 +27,15 @@ type events struct {
 	wake chan struct{}
 }
 
+func TestEmulatorHelperMapsLegacyNamesToEx800(t *testing.T) {
+	want := tools.Path("ex800-studio")
+	for _, configured := range []string{"", "atari800", "atari800-headless", "atari800-studio", "ex800", "ex800-headless"} {
+		if got := emulatorHelper(configured); got != want {
+			t.Errorf("emulatorHelper(%q) = %q, want %q", configured, got, want)
+		}
+	}
+}
+
 func (e *events) emit(_ string, data any) {
 	e.mu.Lock()
 	e.all = append(e.all, data)
@@ -600,7 +609,7 @@ func TestBuildOperationWithBundledToolchain(t *testing.T) {
 
 func TestRunOperationStartsAndStopsTheEmulator(t *testing.T) {
 	toolstest.Tool(t, "exbasic")
-	toolstest.Tool(t, "atari800-studio")
+	toolstest.Tool(t, "ex800-studio")
 	toolstest.Tool(t, "mkatr-go")
 	s, recorder := newService(t)
 	view, err := s.CreateProject(t.TempDir(), "oprun")

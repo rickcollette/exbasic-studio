@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The Atari800 screen with its toolbar and profile editor. Keyboard input
+  // The ex800 screen with its toolbar and profile editor. Keyboard input
   // goes to the emulated machine while the screen has focus.
   import { wb } from '../../lib/workbench.svelte';
   import { native } from '../../lib/native';
@@ -54,7 +54,7 @@
     if (!emulator.image) return;
     const link = document.createElement('a');
     link.href = emulator.image;
-    link.download = `atari800-frame-${emulator.frame}.png`;
+    link.download = `ex800-frame-${emulator.frame}.png`;
     link.click();
   }
 
@@ -64,7 +64,7 @@
 
   const cartridgeSlots = [{ key: 'cartridge', label: 'Primary slot' }, { key: 'cartridge2', label: 'Secondary slot' }] as const;
 
-  // Atari800 cartridge type numbers for images without a .car header.
+  // ex800 cartridge type numbers for images without a .car header.
   const cartridgeTypes = [
     { id: 0, name: 'Automatic' },
     { id: 1, name: 'Standard 8K' },
@@ -94,9 +94,9 @@
       {#each emulator.profiles as profile (profile.id)}<option value={profile.id}>{profile.name}</option>{/each}
     </select>
     <span class="tab-spacer"></span>
-    <button class="icon-button" title="Start" aria-label="Start Atari800" disabled={!wb.commandEnabled('emulator.start')} onclick={() => wb.execute('emulator.start')}><i aria-hidden="true" class="codicon codicon-play"></i></button>
-    <button class="icon-button" title="Restart" aria-label="Restart Atari800" disabled={!wb.commandEnabled('emulator.restart')} onclick={() => wb.execute('emulator.restart')}><i aria-hidden="true" class="codicon codicon-debug-restart"></i></button>
-    <button class="icon-button" title="Stop" aria-label="Stop Atari800" disabled={!wb.commandEnabled('emulator.stop')} onclick={() => wb.execute('debug.stop')}><i aria-hidden="true" class="codicon codicon-debug-stop"></i></button>
+    <button class="icon-button" title="Start" aria-label="Start ex800" disabled={!wb.commandEnabled('emulator.start')} onclick={() => wb.execute('emulator.start')}><i aria-hidden="true" class="codicon codicon-play"></i></button>
+    <button class="icon-button" title="Restart" aria-label="Restart ex800" disabled={!wb.commandEnabled('emulator.restart')} onclick={() => wb.execute('emulator.restart')}><i aria-hidden="true" class="codicon codicon-debug-restart"></i></button>
+    <button class="icon-button" title="Stop" aria-label="Stop ex800" disabled={!wb.commandEnabled('emulator.stop')} onclick={() => wb.execute('debug.stop')}><i aria-hidden="true" class="codicon codicon-debug-stop"></i></button>
     {#if emulator.joystickMode}<span class="state joystick-state" class:running={emulator.trigger} role="status" aria-label={`Joystick STICK ${emulator.stick}, fire ${emulator.trigger ? 'pressed' : 'released'}`} title="STICK(0) and STRIG(0) as the program reads them">{stickGlyphs[emulator.stick] ?? '·'} {emulator.stick} · {emulator.trigger ? 'FIRE' : 'fire'}</span>{/if}
     <button class="icon-button" title={joystickHelp} aria-label="Keyboard joystick" aria-pressed={emulator.joystickMode} onclick={toggleJoystick}><i aria-hidden="true" class="codicon codicon-game"></i></button>
     <button class="icon-button" title="Save the current frame as PNG" aria-label="Capture screen" disabled={!emulator.image} onclick={capture}><i aria-hidden="true" class="codicon codicon-device-camera"></i></button>
@@ -104,15 +104,15 @@
   </div>
   <div class="emulator-workspace">
     <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
-    <div class="emulator-stage" bind:this={stage} tabindex="0" role="application" aria-label={emulator.joystickMode ? 'Atari800 screen. Keyboard joystick on: Q W E A D Z X C, arrows or keypad move, Space, Numpad 0 or Ctrl fire; press Tab to leave.' : 'Atari800 screen. Keyboard input is sent to the emulated Atari; press Tab to leave.'}
+    <div class="emulator-stage" bind:this={stage} tabindex="0" role="application" aria-label={emulator.joystickMode ? 'ex800 screen. Keyboard joystick on: Q W E A D Z X C, arrows or keypad move, Space, Numpad 0 or Ctrl fire; press Tab to leave.' : 'ex800 screen. Keyboard input is sent to the emulated Atari; press Tab to leave.'}
       onkeydown={event => key(event, true)} onkeyup={event => key(event, false)} onblur={() => emulator.releaseKeys()}>
       {#if emulator.image}
-        <img src={emulator.image} style={`width:min(100%, ${336 * (emulator.draft?.scale ?? 2)}px)`} alt={`Atari800 screen, frame ${emulator.frame}`} draggable="false" />
+        <img src={emulator.image} style={`width:min(100%, ${336 * (emulator.draft?.scale ?? 2)}px)`} alt={`ex800 screen, frame ${emulator.frame}`} draggable="false" />
       {:else if emulator.running}
-        <div class="emulator-empty" role="status"><i aria-hidden="true" class="codicon codicon-loading codicon-modifier-spin"></i> Starting Atari800…</div>
+        <div class="emulator-empty" role="status"><i aria-hidden="true" class="codicon codicon-loading codicon-modifier-spin"></i> Starting ex800…</div>
       {:else}
         <div class="emulator-empty">
-          <i aria-hidden="true" class="codicon codicon-device-desktop"></i><strong>Atari800 is stopped</strong>
+          <i aria-hidden="true" class="codicon codicon-device-desktop"></i><strong>ex800 is stopped</strong>
           <span>Choose a profile and press Start. A project is not required.</span>
           <button class="primary" onclick={() => wb.execute('emulator.start')}><i aria-hidden="true" class="codicon codicon-play"></i> Start Emulator</button>
         </div>
@@ -125,10 +125,10 @@
         <label for="emu-name">Name</label><input id="emu-name" bind:value={draft.name} autocomplete="off" />
         <h4>System</h4>
         <label for="emu-machine">Machine</label>
-        <select id="emu-machine" bind:value={draft.machine}><option value="atari">Atari 400/800</option><option value="xl">Atari XL</option><option value="xe">Atari XE</option><option value="5200">Atari 5200</option></select>
+        <select id="emu-machine" bind:value={draft.machine}><option value="atari">Atari 400/800</option><option value="xl">Atari XL</option><option value="xe">Atari XE</option></select>
         <label for="emu-video">Video</label><select id="emu-video" bind:value={draft.video}><option value="ntsc">NTSC</option><option value="pal">PAL</option></select>
         <label for="emu-memory">Memory</label>
-        <select id="emu-memory" bind:value={draft.memory} disabled={draft.machine === '5200' || draft.ultimate1MB}><option value="64">64K</option><option value="128">128K</option><option value="256">256K Rambo</option><option value="320-rambo">320K Rambo</option><option value="320-compy">320K Compy Shop</option><option value="1088">1088K</option></select>
+        <select id="emu-memory" bind:value={draft.memory} disabled={draft.ultimate1MB}><option value="64">64K</option><option value="128">128K</option><option value="256">256K Rambo</option><option value="320-rambo">320K Rambo</option><option value="320-compy">320K Compy Shop</option><option value="1088">1088K</option></select>
         <label for="emu-speed">CPU speed</label>
         <select id="emu-speed" bind:value={draft.cpuSpeed}><option value={100}>1×</option><option value={150}>1.5×</option><option value={200}>2×</option><option value={300}>3×</option><option value={500}>5×</option></select>
         <label class="check"><input type="checkbox" bind:checked={draft.ultimate1MB} /> Ultimate 1MB memory banking</label>
@@ -203,9 +203,9 @@
         <label for="emu-media">Startup media</label>
         <div class="input-row">
           <input id="emu-media" bind:value={draft.media} placeholder="XEX, CAR, ROM or D1: ATR" autocomplete="off" />
-          <button class="icon-button" title="Browse media" aria-label="Browse startup media" onclick={() => choose('Select Atari800 Media', '*.atr;*.xex;*.car;*.rom', 'Atari media', path => { draft.media = path; })}><i aria-hidden="true" class="codicon codicon-folder-opened"></i></button>
+          <button class="icon-button" title="Browse media" aria-label="Browse startup media" onclick={() => choose('Select ex800 Media', '*.atr;*.xex;*.car;*.rom', 'Atari media', path => { draft.media = path; })}><i aria-hidden="true" class="codicon codicon-folder-opened"></i></button>
         </div>
-        <label for="emu-args">Advanced Atari800 arguments (comma-separated)</label><input id="emu-args" bind:value={args} onchange={saveArgs} autocomplete="off" />
+        <label for="emu-args">Advanced ex800 arguments (comma-separated)</label><input id="emu-args" bind:value={args} onchange={saveArgs} autocomplete="off" />
         <footer>
           <button disabled={!draft.id || emulator.profiles.length <= 1} onclick={removeProfile}><i aria-hidden="true" class="codicon codicon-trash"></i> Delete</button>
           <button class="primary" onclick={() => { saveArgs(); void emulator.saveProfile(); }}><i aria-hidden="true" class="codicon codicon-save"></i> Save Profile</button>

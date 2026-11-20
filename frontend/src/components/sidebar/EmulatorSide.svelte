@@ -11,9 +11,9 @@
   </select>
 </div>
 <div class="run-actions">
-  <button class="primary" onclick={() => wb.execute('emulator.open')}><i aria-hidden="true" class="codicon codicon-device-desktop"></i> {wb.editors.emulatorOpen ? 'Show Atari800 Screen' : 'Open Atari800 Screen'}</button>
+  <button class="primary" onclick={() => wb.execute('emulator.open')}><i aria-hidden="true" class="codicon codicon-device-desktop"></i> {wb.editors.emulatorOpen ? 'Show ex800 Screen' : 'Open ex800 Screen'}</button>
   <button disabled={!wb.commandEnabled('emulator.start')} onclick={() => wb.execute('emulator.start')}><i aria-hidden="true" class="codicon codicon-play"></i> Start</button>
   <button disabled={!wb.commandEnabled('emulator.restart')} onclick={() => wb.execute('emulator.restart')}><i aria-hidden="true" class="codicon codicon-debug-restart"></i> Restart</button>
   <button disabled={!wb.commandEnabled('emulator.stop')} onclick={() => wb.execute('emulator.stop')}><i aria-hidden="true" class="codicon codicon-debug-stop"></i> Stop</button>
 </div>
-<p class="hint">Atari800 runs inside an editor tab; a project is not required. Closing the tab stops the emulated machine.</p>
+<p class="hint">ex800 runs inside an editor tab; a project is not required. Closing the tab stops the emulated machine.</p>

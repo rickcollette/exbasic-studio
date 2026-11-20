@@ -6,7 +6,7 @@
 |------|---------|----------|
 | Go | the version in `go.mod` | backend, tools |
 | Node.js | 22 | frontend |
-| C and C++ compiler, `make`, `bash` | GCC or Clang | exBASIC and Atari800 |
+| C and C++ compiler, `make`, `bash` | GCC or Clang | exBASIC and ex800 |
 | Wails CLI | `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0` | dev server, bindings, packaging |
 | Task | `go install github.com/go-task/task/v3/cmd/task@latest` | build tasks |
 | Git | any recent | source control features and tests |
@@ -21,7 +21,7 @@ Platform notes:
 ## Build and run
 
 ```
-task toolchain        # exBASIC, Atari800, atari800-studio, mkatr-go -> build/stage/<os>-<arch>/tools
+task toolchain        # exBASIC, ex800, ex800-studio, mkatr-go -> build/stage/<os>-<arch>/tools
 cd frontend && npm ci && cd ..
 task dev              # live-reload development build
 task build            # production build in bin/
@@ -77,7 +77,7 @@ These are checked in, and CI fails if they are stale:
   works from the keyboard and has an accessible name; decorative icons are
   `aria-hidden`.
 - User-visible changes get a line in `CHANGELOG.md`.
-- The compiler, the Atari800 helper and mkatr-go are GPL programs that run
+- The compiler, the ex800 helper and mkatr-go are GPL programs that run
   as separate processes. Do not link their code into the Studio executable.
 
 ## Changing the bundled tools
@@ -85,11 +85,11 @@ These are checked in, and CI fails if they are stale:
 - **exBASIC:** edit `third_party/exbasic/source`. Changes to the metadata
   document need a matching change in `internal/compiler/metadata.go` and a
   schema version bump if they are not backwards compatible.
-- **Atari800 helper:** `third_party/atari800/studio-helper/main.c`. The
+- **ex800 helper:** `third_party/ex800/studio-helper/main.c`. The
   protocol version is checked in a handshake; bump it on both sides
   (`PROTOCOL_VERSION` and `emulator.ProtocolVersion`) for breaking changes.
-- **Atari800 core:** the tree is the upstream 7.2.1 release plus the changes
-  listed in `third_party/atari800/NOTICE.md`.
+- **ex800 core:** the tree is the pinned ex800 1.0.0 snapshot, derived from
+  Atari800 7.2.1; see `third_party/ex800/NOTICE.md`.
 
 See `docs/ARCHITECTURE.md` for the structure and `docs/SECURITY.md` for the
 security model.

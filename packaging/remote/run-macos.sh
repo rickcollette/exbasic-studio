@@ -70,13 +70,13 @@ EOF
     # The source archive originates on Windows, so restore the execute bit
     # required when the native toolchain invokes this generated script.
     chmod +x \
-      third_party/atari800/atari800-7.2.1/compile \
-      third_party/atari800/atari800-7.2.1/config.guess \
-      third_party/atari800/atari800-7.2.1/config.sub \
-      third_party/atari800/atari800-7.2.1/configure \
-      third_party/atari800/atari800-7.2.1/depcomp \
-      third_party/atari800/atari800-7.2.1/install-sh \
-      third_party/atari800/atari800-7.2.1/missing
+      third_party/ex800/ex800-1.0.0/compile \
+      third_party/ex800/ex800-1.0.0/config.guess \
+      third_party/ex800/ex800-1.0.0/config.sub \
+      third_party/ex800/ex800-1.0.0/configure \
+      third_party/ex800/ex800-1.0.0/depcomp \
+      third_party/ex800/ex800-1.0.0/install-sh \
+      third_party/ex800/ex800-1.0.0/missing
     python3 - <<'PY'
 from pathlib import Path
 

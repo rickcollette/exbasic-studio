@@ -73,20 +73,20 @@
     {#if editors.emulatorOpen}
       <div class="editor-tab" role="presentation" class:active={showEmulator}>
         <button role="tab" id="tab-emulator" aria-selected={showEmulator} aria-controls="editor-content" tabindex={showEmulator ? 0 : -1} onclick={() => activate(EMULATOR_TAB)} onkeydown={event => tabKey(event, EMULATOR_TAB)}>
-          <i aria-hidden="true" class="codicon codicon-device-desktop"></i><span>Atari800</span>{#if wb.emulator.running}<i role="img" class="codicon codicon-circle-filled running" aria-label="running"></i>{/if}
+          <i aria-hidden="true" class="codicon codicon-device-desktop"></i><span>ex800</span>{#if wb.emulator.running}<i role="img" class="codicon codicon-circle-filled running" aria-label="running"></i>{/if}
         </button>
-        <button class="close-tab" tabindex="-1" aria-hidden="true" title="Stop and close Atari800" aria-label="Stop and close Atari800" onclick={() => closeTab(EMULATOR_TAB)}><i aria-hidden="true" class="codicon codicon-close"></i></button>
+        <button class="close-tab" tabindex="-1" aria-hidden="true" title="Stop and close ex800" aria-label="Stop and close ex800" onclick={() => closeTab(EMULATOR_TAB)}><i aria-hidden="true" class="codicon codicon-close"></i></button>
       </div>
     {/if}
   </div>
   <span class="tab-spacer"></span>
-  {#if !editors.emulatorOpen}<button class="icon-button" title="Open Atari800 screen" aria-label="Open Atari800 screen" onclick={() => wb.execute('emulator.open')}><i aria-hidden="true" class="codicon codicon-device-desktop"></i></button>{/if}
+  {#if !editors.emulatorOpen}<button class="icon-button" title="Open ex800 screen" aria-label="Open ex800 screen" onclick={() => wb.execute('emulator.open')}><i aria-hidden="true" class="codicon codicon-device-desktop"></i></button>{/if}
   <button class="icon-button" title="Run without debugging (Ctrl+F5)" aria-label="Run without debugging" disabled={!wb.commandEnabled('run')} onclick={() => wb.execute('run')}><i aria-hidden="true" class="codicon codicon-play"></i></button>
   <button class="icon-button" title="Toggle editor split (Ctrl+\)" aria-label="Toggle editor split" aria-pressed={editors.splitOpen} disabled={!wb.commandEnabled('editor.split')} onclick={() => wb.execute('editor.split')}><i aria-hidden="true" class="codicon codicon-split-horizontal"></i></button>
 </div>
 
 <div class="breadcrumbs" aria-label="Location">
-  {#if showEmulator}<i aria-hidden="true" class="codicon codicon-device-desktop"></i><span>Atari800</span>
+  {#if showEmulator}<i aria-hidden="true" class="codicon codicon-device-desktop"></i><span>ex800</span>
   {:else if sprite}<i aria-hidden="true" class="codicon codicon-paintcan"></i>{#each sprite.path.split('/') as part, index}{#if index > 0}<i aria-hidden="true" class="codicon codicon-chevron-right"></i>{/if}<span>{part}</span>{/each}<span>(Sprite Studio)</span>
   {:else if tab}{#each tab.path.split('/') as part, index}{#if index > 0}<i aria-hidden="true" class="codicon codicon-chevron-right"></i>{/if}<span>{part}</span>{/each}
   {:else}<span>exBASIC Studio</span>{/if}

@@ -1,0 +1,75 @@
+TO COMPILE, BUILD AND INSTALL EX800 FROM SOURCE CODE
+====================================================
+
+OBTAIN THE SOURCE CODE
+======================
+Use the ex800 source tree containing `configure.ac` and `src/`.
+
+For a versioned release, unpack `ex800-1.0.0` and enter that directory.
+
+Open a terminal in the directory containing the ex800 source files.
+
+You need to remain in this directory for all the procedures below to work.
+
+CREATE THE CONFIGURE FILE
+=========================
+If your directory already contains a file called 'configure' you can skip
+this.  This will be the case if you are compiling a released version
+of ex800.
+
+If you don't have a configure file, generate it as follows.
+
+Make sure you have autoconf installed:
+
+    sudo apt-get install autoconf
+
+Create the configure file:
+
+    ./autogen.sh
+
+See DOC/INSTALL for further details.
+
+INSTALL SDL DEVELOPMENT FILES
+=============================
+Ensure the SDL development files are installed:
+
+    sudo apt-get install libsdl2-dev
+
+COMPILE
+=======
+Configure and make:
+
+    ./configure
+    make
+
+Make generates the executable file src/ex800. You can run ex800 by
+<double clicking> on it, or by changing to the src directory and
+using the command:
+
+    ./ex800
+
+If you are happy to run the emulator this way, you don't need to need
+to install as described below.
+
+INSTALL
+=======
+To install ex800:
+
+    sudo make install
+
+You can then run the emulator with the following command, regardless of which
+directory you are in:
+
+    ex800
+
+UNINSTALL
+=========
+The package manager knows nothing about this installation, so it can't be
+uninstalled in the usual manner.  Use the following command instead:
+
+    sudo make uninstall
+
+
+
+
+

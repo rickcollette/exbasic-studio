@@ -77,12 +77,12 @@ func TestPackagedLayouts(t *testing.T) {
 			}
 			fakeExecutable(t, filepath.Join(base, filepath.FromSlash(layout[0])))
 			toolRoot := filepath.Join(base, filepath.FromSlash(layout[1]))
-			touch(t, filepath.Join(toolRoot, exe("atari800-studio")))
+			touch(t, filepath.Join(toolRoot, exe("ex800-studio")))
 			root, ok := Root()
 			if !ok || root != toolRoot {
 				t.Fatalf("Root() = %q, %v; want %q", root, ok, toolRoot)
 			}
-			if got, found := Bundled("atari800-studio"); !found || got != filepath.Join(toolRoot, exe("atari800-studio")) {
+			if got, found := Bundled("ex800-studio"); !found || got != filepath.Join(toolRoot, exe("ex800-studio")) {
 				t.Fatalf("Bundled = %q, %v", got, found)
 			}
 		})

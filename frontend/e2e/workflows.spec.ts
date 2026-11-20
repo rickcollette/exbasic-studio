@@ -97,11 +97,11 @@ test('run opens the emulator tab and Stop ends it', async ({ page }) => {
   await start(page);
   await createProject(page);
   await page.keyboard.press('Control+F5');
-  await expect(page.getByRole('tab', { name: /Atari800/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: /ex800/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.emulator-stage img')).toBeVisible();
   await expect(page.locator('.emulator-toolbar .state').first()).toContainText('Running');
-  await page.getByRole('button', { name: 'Stop Atari800' }).click();
-  await expect(page.getByText('Atari800 is stopped')).toBeVisible();
+  await page.getByRole('button', { name: 'Stop ex800' }).click();
+  await expect(page.getByText('ex800 is stopped')).toBeVisible();
 });
 
 test('keyboard joystick and the Keyboard panel', async ({ page }) => {
@@ -452,7 +452,7 @@ test.describe('accessibility', () => {
   test('every side bar view', async ({ page }) => {
     await start(page);
     await createProject(page);
-    for (const view of ['Search', 'ATR Explorer', 'Source Control', 'Run and Debug', 'Atari800 Emulator', 'Sprite Studio', 'exBASIC Manual', 'Settings']) {
+    for (const view of ['Search', 'ATR Explorer', 'Source Control', 'Run and Debug', 'ex800 Emulator', 'Sprite Studio', 'exBASIC Manual', 'Settings']) {
       await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: view, exact: true }).click();
       await expect(page.locator('.sidebar-title')).toHaveText(view);
       await expectAccessible(page, `the ${view} view`);

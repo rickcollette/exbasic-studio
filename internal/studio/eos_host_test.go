@@ -83,7 +83,7 @@ func TestProjectHostPath(t *testing.T) {
 }
 
 func TestRunningEOSHostMutationRefreshesD8(t *testing.T) {
-	helper := toolstest.Tool(t, "atari800-studio")
+	helper := toolstest.Tool(t, "ex800-studio")
 	tool := toolstest.Tool(t, "mkatr-go")
 	eosCar := toolstest.Asset(t, "EOS.car")
 	p, err := project.Create(t.TempDir(), "lived8")

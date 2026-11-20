@@ -10,7 +10,7 @@
   import Settings from './sidebar/Settings.svelte';
   import SpritesSide from './sidebar/SpritesSide.svelte';
 
-  const titles = { explorer: 'Explorer', search: 'Search', atr: 'ATR Explorer', source: 'Source Control', run: 'Run and Debug', emulator: 'Atari800 Emulator', sprites: 'Sprite Studio', manual: 'exBASIC Manual', settings: 'Settings' } as const;
+  const titles = { explorer: 'Explorer', search: 'Search', atr: 'ATR Explorer', source: 'Source Control', run: 'Run and Debug', emulator: 'ex800 Emulator', sprites: 'Sprite Studio', manual: 'exBASIC Manual', settings: 'Settings' } as const;
 </script>
 
 <h2 class="sidebar-title">{titles[wb.ui.activity]}</h2>

@@ -36,7 +36,7 @@ the backend starts as child processes.
 │   └ tools         locates the bundled programs                                    │
 └───────────────────────────────────────┬───────────────────────────────────────────┘
                               child processes (argv only)
-        exbasic (+ ca65, ld65)        atari800-studio            mkatr-go        git, shell
+        exbasic (+ ca65, ld65)          ex800-studio             mkatr-go        git, shell
 ```
 
 ## Frontend
@@ -96,7 +96,7 @@ exBASIC programs mix interpreted bytecode and native 6502 code. The
 metadata gives, for every executable source line, the address ranges of its
 code and whether they are bytecode or native.
 
-The helper is built with Atari800's code-breakpoint support. While
+The helper is built with ex800's inherited code-breakpoint support. While
 something can stop the machine, the CPU core calls the helper after every
 instruction. The helper computes the *code location*: the bytecode pointer
 when the program counter is at the interpreter's dispatch address, the

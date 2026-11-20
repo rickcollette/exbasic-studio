@@ -135,10 +135,10 @@ func (s *StudioService) GetEnvironment() Environment {
 		Platform:     runtime.GOOS + "/" + runtime.GOARCH,
 		WorkingDir:   usefulWorkingDirectory(),
 		CompilerHint: tools.Path("exbasic"),
-		EmulatorHint: tools.Path("atari800-studio"),
+		EmulatorHint: tools.Path("ex800-studio"),
 	}
 	missing := []string{}
-	for _, tool := range []struct{ name, label string }{{"exbasic", "exBASIC compiler"}, {"atari800-studio", "Atari800 helper"}, {"mkatr-go", "mkatr-go"}} {
+	for _, tool := range []struct{ name, label string }{{"exbasic", "exBASIC compiler"}, {"ex800-studio", "ex800 helper"}, {"mkatr-go", "mkatr-go"}} {
 		if _, ok := tools.Bundled(tool.name); !ok {
 			missing = append(missing, tool.label)
 		}

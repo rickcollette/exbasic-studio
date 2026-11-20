@@ -65,6 +65,9 @@ func TestProfileHardwareConfiguration(t *testing.T) {
 	if _, err := normalizeProfile(Profile{Name: "bad speed", Machine: "xl", Memory: "64", CPUSpeed: 250}); err == nil {
 		t.Fatal("unsupported CPU speed was accepted")
 	}
+	if _, err := normalizeProfile(Profile{Name: "old console", Machine: "5200", Memory: "16", CPUSpeed: 100}); err == nil {
+		t.Fatal("Atari 5200 profile was accepted even though ex800 does not support it")
+	}
 	for _, memory := range []string{"64", "128", "256", "320-rambo", "320-compy", "1088"} {
 		if _, err := normalizeProfile(Profile{Name: "memory", Machine: "xl", Memory: memory, CPUSpeed: 100}); err != nil {
 			t.Fatalf("memory configuration %s should be supported: %v", memory, err)

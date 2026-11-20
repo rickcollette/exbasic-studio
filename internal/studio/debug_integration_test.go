@@ -51,7 +51,7 @@ func helperProcesses(t *testing.T) int {
 	t.Helper()
 	pid := strconv.Itoa(os.Getpid())
 	if runtime.GOOS == "windows" {
-		query := "@(Get-CimInstance Win32_Process -Filter \"ParentProcessId=" + pid + " AND Name='atari800-studio.exe'\").Count"
+		query := "@(Get-CimInstance Win32_Process -Filter \"ParentProcessId=" + pid + " AND Name='ex800-studio.exe'\").Count"
 		out, err := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", query).Output()
 		if err != nil {
 			t.Skipf("cannot list child processes: %v", err)
@@ -59,14 +59,14 @@ func helperProcesses(t *testing.T) int {
 		count, _ := strconv.Atoi(strings.TrimSpace(string(out)))
 		return count
 	}
-	out, _ := exec.Command("pgrep", "-P", pid, "-x", "atari800-studio").Output()
+	out, _ := exec.Command("pgrep", "-P", pid, "-x", "ex800-studio").Output()
 	return len(strings.Fields(string(out)))
 }
 
 func debugProject(t *testing.T, native string) (*StudioService, *events, string) {
 	t.Helper()
 	toolstest.Tool(t, "exbasic")
-	toolstest.Tool(t, "atari800-studio")
+	toolstest.Tool(t, "ex800-studio")
 	toolstest.Tool(t, "mkatr-go")
 	s, recorder := newService(t)
 	view, err := s.CreateProject(t.TempDir(), "dbg")

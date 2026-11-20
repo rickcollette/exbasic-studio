@@ -94,7 +94,7 @@ func DefaultConfig(name string) Config {
 	return Config{
 		SchemaVersion: CurrentSchemaVersion,
 		Name:          name, Entry: "src/main.bas", Target: "atari", Output: "build/" + name + ".xex",
-		Compiler: "exbasic", Emulator: "atari800-studio", Native: "auto", Debug: true,
+		Compiler: "exbasic", Emulator: "ex800-studio", Native: "auto", Debug: true,
 		IncludePaths: []string{"src", "lib"}, Assembly: []string{},
 		ATR: ATRConfig{Tool: "mkatr-go", Filesystem: "sparta", Output: "build/" + name + ".atr", Boot: true, BootPage: 7, Files: []string{}},
 	}

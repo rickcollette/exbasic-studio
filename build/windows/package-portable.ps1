@@ -10,7 +10,7 @@ $ErrorActionPreference = 'Stop'
 
 $exe = Join-Path $Root 'bin\exbasic-studio.exe'
 $tools = Join-Path $Root "build\stage\windows-$Arch\tools"
-foreach ($required in @($exe, $tools, (Join-Path $tools 'exbasic\exbasic.exe'), (Join-Path $tools 'atari800-studio.exe'), (Join-Path $tools 'mkatr-go.exe'))) {
+foreach ($required in @($exe, $tools, (Join-Path $tools 'exbasic\exbasic.exe'), (Join-Path $tools 'ex800-studio.exe'), (Join-Path $tools 'mkatr-go.exe'))) {
     if (-not (Test-Path -LiteralPath $required)) { throw "Missing $required. Run 'task build' first." }
 }
 

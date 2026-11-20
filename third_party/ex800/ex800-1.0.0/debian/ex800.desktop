@@ -1,0 +1,10 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=ex800
+Comment=Atari 8-bit Emulator
+Exec=ex800
+Icon=ex800
+Terminal=false
+Type=Application
+Categories=Game
+Keywords=ex800;Atari;Emulator;

@@ -108,7 +108,7 @@ func TestTrustIsBoundToToolFingerprint(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "proj")
 	s := NewStore(dir)
-	original := ToolFingerprint("exbasic", "atari800-studio", "mkatr-go")
+	original := ToolFingerprint("exbasic", "ex800-studio", "mkatr-go")
 	if s.IsTrusted(root, original) {
 		t.Fatal("workspace trusted by default")
 	}
@@ -118,7 +118,7 @@ func TestTrustIsBoundToToolFingerprint(t *testing.T) {
 	if !NewStore(dir).IsTrusted(root, original) {
 		t.Fatal("trust did not persist")
 	}
-	if s.IsTrusted(root, ToolFingerprint("evil.exe", "atari800-studio", "mkatr-go")) {
+	if s.IsTrusted(root, ToolFingerprint("evil.exe", "ex800-studio", "mkatr-go")) {
 		t.Fatal("changing a tool path must revoke trust")
 	}
 	if ToolFingerprint("a", "bc") == ToolFingerprint("ab", "c") {

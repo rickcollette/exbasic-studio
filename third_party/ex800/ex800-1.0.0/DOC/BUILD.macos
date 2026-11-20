@@ -1,0 +1,25 @@
+Building ex800 for macOS
+========================
+
+The command-line build is the same on Intel and Apple Silicon Macs. Install
+the SDL2 and libpng development packages, then configure and build out of tree:
+
+    brew install sdl2 libpng
+    mkdir build-ex800
+    cd build-ex800
+    ../ex800-1.0.0/configure --with-video=sdl2 --with-sound=sdl2 \
+        --disable-download --without-readline
+    make
+
+The executable is `src/ex800` inside the build directory.
+
+The repository-level `build/tools/build-release.sh` script additionally builds
+the Studio helper, creates an `ex800.app` bundle, copies non-system dynamic
+libraries with dylibbundler and applies an ad-hoc signature. Run it natively on
+the requested architecture:
+
+    brew install sdl2 libpng dylibbundler
+    build/tools/build-release.sh macos-arm64
+
+Use `macos-x86_64` on an Intel Mac. Release distribution may require replacing
+the ad-hoc signature with a Developer ID signature and notarizing the bundle.

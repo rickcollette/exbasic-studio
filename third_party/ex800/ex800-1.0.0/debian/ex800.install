@@ -1,0 +1,3 @@
+data/ex800.xpm usr/share/pixmaps/
+src/ex800 usr/bin
+debian/ex800.desktop usr/share/applications/

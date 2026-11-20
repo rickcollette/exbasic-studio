@@ -14,7 +14,7 @@ import (
 )
 
 // prepareEOSHostDisk exposes the normal project H folder through a disk device
-// EOS actually implements. Atari800's H: patch is an Atari OS CIO handler and
+// EOS actually implements. ex800's inherited H: patch is an Atari OS CIO handler and
 // is intentionally not advertised as an EOS device.
 func prepareEOSHostDisk(launch emulator.Launch) (emulator.Launch, error) {
 	if launch.EOSCar == "" || launch.HostDir == "" {

@@ -82,7 +82,7 @@ type Launch struct {
 	HostDisk       string `json:"hostDisk,omitempty"`
 	HostDeviceName string `json:"hostDeviceName,omitempty"`
 	// Cart and Cart2 are cartridge images for the primary and secondary
-	// slots, with their Atari800 type numbers (zero: decided by Atari800).
+	// slots, with their ex800 type numbers (zero: decided by ex800).
 	// The EOS cartridge in the primary slot is passed in EOSCar instead.
 	Cart      string `json:"cart,omitempty"`
 	CartType  int    `json:"cartType,omitempty"`
@@ -222,7 +222,7 @@ func Start(launch Launch) (*Session, error) {
 	s := &Session{cmd: cmd, stdin: stdin, reader: bufio.NewReaderSize(stdout, 64<<10), hostDeviceName: launch.HostDeviceName}
 	cmd.Stderr = &s.stderr
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("start embedded Atari800: %w", err)
+		return nil, fmt.Errorf("start embedded ex800: %w", err)
 	}
 	if err := s.handshake(); err != nil {
 		_ = s.Stop()
@@ -247,16 +247,16 @@ func (s *Session) handshake() error {
 	select {
 	case outcome := <-done:
 		if outcome.err != nil {
-			return fmt.Errorf("the Atari800 helper is not compatible with this version of exBASIC Studio (protocol %d required): %w", ProtocolVersion, outcome.err)
+			return fmt.Errorf("the ex800 helper is not compatible with this version of exBASIC Studio (protocol %d required): %w", ProtocolVersion, outcome.err)
 		}
 		if outcome.res.Protocol != ProtocolVersion {
-			return fmt.Errorf("the Atari800 helper speaks protocol %d; protocol %d is required", outcome.res.Protocol, ProtocolVersion)
+			return fmt.Errorf("the ex800 helper speaks protocol %d; protocol %d is required", outcome.res.Protocol, ProtocolVersion)
 		}
 		s.hello = outcome.res.Hello
 		return nil
 	case <-time.After(handshakeTimeout):
 		_ = s.cmd.Process.Kill()
-		return errors.New("the Atari800 helper did not answer the protocol handshake")
+		return errors.New("the ex800 helper did not answer the protocol handshake")
 	}
 }
 
@@ -270,7 +270,7 @@ func (s *Session) readLine() ([]byte, error) {
 		chunk, err := s.reader.ReadSlice('\n')
 		line = append(line, chunk...)
 		if len(line) > maxResponseBytes {
-			return nil, errors.New("the Atari800 helper sent an oversized response")
+			return nil, errors.New("the ex800 helper sent an oversized response")
 		}
 		if err == nil {
 			return line, nil
@@ -285,7 +285,7 @@ func (s *Session) call(payload map[string]any) (response, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed.Load() {
-		return response{}, errors.New("Atari800 session is stopped")
+		return response{}, errors.New("ex800 session is stopped")
 	}
 	s.nextID++
 	payload["id"] = s.nextID
@@ -294,7 +294,7 @@ func (s *Session) call(payload map[string]any) (response, error) {
 		return response{}, err
 	}
 	if _, err = s.stdin.Write(append(encoded, '\n')); err != nil {
-		return response{}, s.failure(fmt.Errorf("write Atari800 command: %w", err))
+		return response{}, s.failure(fmt.Errorf("write ex800 command: %w", err))
 	}
 	for {
 		line, readErr := s.readLine()
@@ -308,7 +308,7 @@ func (s *Session) call(payload map[string]any) (response, error) {
 		}
 		if !res.OK {
 			if res.Error == "" {
-				res.Error = "the Atari800 helper rejected the request"
+				res.Error = "the ex800 helper rejected the request"
 			}
 			return res, errors.New(res.Error)
 		}
@@ -339,10 +339,10 @@ func (s *Session) Frame() (Frame, error) {
 	if res.Pixels != "" {
 		raw, decodeErr := base64.StdEncoding.DecodeString(res.Pixels)
 		if decodeErr != nil {
-			return Frame{}, fmt.Errorf("decode Atari800 pixels: %w", decodeErr)
+			return Frame{}, fmt.Errorf("decode ex800 pixels: %w", decodeErr)
 		}
 		if res.Width <= 0 || res.Height <= 0 || res.Width > 1024 || res.Height > 1024 || len(raw) != res.Width*res.Height*3 {
-			return Frame{}, errors.New("Atari800 returned an invalid frame buffer")
+			return Frame{}, errors.New("ex800 returned an invalid frame buffer")
 		}
 		frame := image.NewRGBA(image.Rect(0, 0, res.Width, res.Height))
 		for src, dst := 0, 0; src < len(raw); src, dst = src+3, dst+4 {
@@ -418,7 +418,7 @@ func (s *Session) DebugState() (DebugState, error) {
 		return DebugState{}, err
 	}
 	if res.Debug == nil {
-		return DebugState{}, errors.New("the Atari800 helper returned no debugger state")
+		return DebugState{}, errors.New("the ex800 helper returned no debugger state")
 	}
 	return *res.Debug, nil
 }
@@ -511,7 +511,7 @@ func (s *Session) ReadMemory(address, length int) ([]byte, error) {
 	}
 	data, err := hex.DecodeString(res.Data)
 	if err != nil || len(data) != length || res.Address != address {
-		return nil, errors.New("the Atari800 helper returned an invalid memory block")
+		return nil, errors.New("the ex800 helper returned an invalid memory block")
 	}
 	return data, nil
 }
@@ -540,7 +540,7 @@ func (s *Session) Stop() error {
 	case <-time.After(5 * time.Second):
 		_ = s.cmd.Process.Kill()
 		<-done
-		return errors.New("the Atari800 helper did not exit and was terminated")
+		return errors.New("the ex800 helper did not exit and was terminated")
 	}
 }
 

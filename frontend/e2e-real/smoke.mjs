@@ -93,7 +93,7 @@ try {
   await page.waitForSelector('text=/Running · frame \\d+/', { timeout: 30000 });
   const output = await outputText();
   check(output.includes('Build succeeded'), 'the build succeeds');
-  check(output.includes('Atari800 started'), 'the emulator starts');
+  check(output.includes('ex800 started'), 'the emulator starts');
   check(fs.existsSync(path.join(project, 'build', 'TEST1.xex')), 'the executable is written to the project build folder');
   await page.waitForSelector('.emulator-toolbar >> text=/H1:/', { timeout: 10000 }).catch(() => {});
   check(await page.locator('text=/H1:/').count() > 0, 'the H1: host drive is mapped and shown');
@@ -108,7 +108,7 @@ try {
   check(await page.locator('.keyboard .key.held').count() === 3, 'the keyboard joystick reports STICK 10 with fire and lights the keys');
   for (const key of ['Space', 'ArrowLeft', 'ArrowUp']) await page.keyboard.up(key);
   await page.waitForSelector('.joystick-state:has-text("15")', { timeout: 5000 });
-  check(await page.locator('text=Atari800 stopped').count() === 0, 'the helper accepts joystick requests');
+  check(await page.locator('text=ex800 stopped').count() === 0, 'the helper accepts joystick requests');
 
   check(pageErrors.length === 0, `no script errors in the window${pageErrors.length ? ': ' + pageErrors.join('; ') : ''}`);
 } catch (error) {

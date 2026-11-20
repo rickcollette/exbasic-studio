@@ -90,7 +90,7 @@ func (s *StudioService) StartRun(request RunRequest) (operations.Info, error) {
 		if startErr := s.startEmulator(launch); startErr != nil {
 			return result, startErr
 		}
-		op.Output("stdout", "\nAtari800 started in an editor tab.\n")
+		op.Output("stdout", "\nex800 started in an editor tab.\n")
 		s.mu.RLock()
 		session, started := s.emulator, s.emulatorLaunch
 		s.mu.RUnlock()
@@ -184,8 +184,8 @@ func applyCartridges(launch *emulator.Launch, profile emulator.Profile) error {
 	return nil
 }
 
-// cartridgeType decides the Atari800 type number of a cartridge image. A
-// .car file names its own type in its header, which Atari800 reads (zero is
+// cartridgeType decides the ex800 type number of a cartridge image. A
+// .car file names its own type in its header, which ex800 reads (zero is
 // returned). A raw image has no header: the chosen type is used, or one
 // implied by the file size when the size allows only one sensible answer.
 func cartridgeType(slot emulator.CartridgeSlot) (int, error) {

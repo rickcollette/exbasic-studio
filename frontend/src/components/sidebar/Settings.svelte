@@ -104,7 +104,7 @@
     <h3>Tools</h3>
     <p class="hint">Leave the defaults to use the tools bundled with exBASIC Studio. Changing a path revokes folder trust.</p>
     <label for="compiler-setting">exBASIC compiler</label><input id="compiler-setting" bind:value={draft.compiler} autocomplete="off" spellcheck="false" />
-    <label for="emulator-setting">Atari800 helper</label><input id="emulator-setting" bind:value={draft.emulator} autocomplete="off" spellcheck="false" />
+    <label for="emulator-setting">ex800 helper</label><input id="emulator-setting" bind:value={draft.emulator} autocomplete="off" spellcheck="false" />
 
     <h3>ATR Disk Image</h3>
     <label class="check"><input type="checkbox" bind:checked={draft.atr.enabled} /> Package builds into an ATR image</label>

@@ -51,7 +51,7 @@
     <div class="keyboard" role="img" aria-label={`${layouts[layout].label} keyboard with the Atari key of each key`}
       style={`--cols:${LAYOUT_WIDTH * 4}; --rows:${LAYOUT_HEIGHT}; --unit:${unit}px`}>
       {#each keys as { cap, atari } (`${cap.code}-${cap.x}-${cap.y}`)}
-        <div class={`key kind-${atari.kind}`} class:held={cap.code !== '' && emulator.held.has(cap.code)} title={tooltip(cap.label, atari)}
+        <div class={`key kind-${atari.kind}`} class:held={cap.code !== '' && emulator.held.includes(cap.code)} title={tooltip(cap.label, atari)}
           style={`grid-column:${cap.x * 4 + 1} / span ${cap.w * 4}; grid-row:${cap.y + 1} / span ${cap.h}`}>
           <span class="pc">{cap.shift && atari.kind !== 'char' ? `${cap.label} ${cap.shift}` : cap.label}</span>
           {#if atari.kind !== 'char' && atari.kind !== 'none'}<span class="atari">{atari.label}</span>{/if}
