@@ -13,7 +13,7 @@ wails_windows_*.syso
 *.lst
 *.o
 *.asm~
-third_party/
+third_party/exbasic/source/Atari-Basic-Reference-Manual-Rev-C.pdf
 frontend/test-results/
 frontend/playwright-report/
 build/

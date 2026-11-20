@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 //
-// Go port of mkatr by Daniel Serpell.
-// Original project: https://github.com/dmsc/mkatr
+// Go port of Daniel Serpell's mkatr ... https://github.com/dmsc/mkatr
 package mkatrgo
 
 import (
@@ -24,22 +23,27 @@ const (
 	maxFileBytes                  = 0x1000000
 )
 
-var errNoSpace = errors.New("image has insufficient space")
+var errNoSpace = errors.New("image is out of space")
 
-// Attributes are SpartaDOS directory flags applied to an image entry.
+// Attributes are the protected/hidden/archived flags on an entry.
 type Attributes byte
 
-// Options controls ATR sizing and bootloader generation.
+// Options is the image geometry + filesystem/boot setup.
 type Options struct {
 	Filesystem  string
+	Revision    int
+	Volume      string
 	ExactSize   bool
 	MinimumSize int
 	BootPage    int
 	SectorSize  int
 	Sectors     int
+	// BootSectors can replace the three 128-byte boot sectors. filesystem
+	// header fields get filled in after the copy (so they still match the disk).
+	BootSectors []byte
 }
 
-// Result describes the generated image.
+// Result is the geometry/size that actually got built.
 type Result struct {
 	SectorSize int
 	Sectors    int
@@ -62,7 +66,7 @@ type entry struct {
 	clock      [3]byte
 }
 
-// Builder accumulates files and directories for an ATR image.
+// Builder collects everything that will go into a new image.
 type Builder struct {
 	entries        []*entry
 	root           *entry
@@ -70,7 +74,7 @@ type Builder struct {
 	cliDirectories []*entry
 }
 
-// NewBuilder returns an empty image with a SpartaDOS MAIN directory.
+// NewBuilder starts with an empty MAIN directory.
 func NewBuilder() *Builder {
 	now := time.Now()
 	root := &entry{imagePath: "", directory: true, size: 23}
@@ -82,8 +86,8 @@ func NewBuilder() *Builder {
 	return b
 }
 
-// AddFile adds one host file at a chosen image path, creating parent
-// directories automatically. The image path uses forward slashes.
+// AddFile adds one host file (missing parent directories are made as needed).
+// image paths use forward slashes.
 func (b *Builder) AddFile(hostPath, imagePath string, attributes Attributes, boot bool) error {
 	info, err := os.Stat(hostPath)
 	if err != nil {
@@ -109,7 +113,7 @@ func (b *Builder) AddFile(hostPath, imagePath string, attributes Attributes, boo
 	return b.addData(hostPath, clean, data, attributes, boot, info.ModTime())
 }
 
-// AddData adds in-memory data at a chosen image path.
+// AddData is AddFile for bytes already in memory.
 func (b *Builder) AddData(imagePath string, data []byte, attributes Attributes, boot bool, modified time.Time) error {
 	clean, err := cleanImagePath(imagePath)
 	if err != nil || clean == "" {
@@ -132,7 +136,7 @@ func (b *Builder) addData(hostPath, clean string, data []byte, attributes Attrib
 	return b.addEntry(&entry{hostPath: hostPath, imagePath: clean, data: data, size: len(data), parent: parent, level: parent.level + 1, attributes: attributes, boot: boot}, modified)
 }
 
-// AddDirectory adds an explicit directory, including an empty one.
+// AddDirectory adds a directory (including an empty one).
 func (b *Builder) AddDirectory(imagePath string, attributes Attributes, modified time.Time) error {
 	clean, err := cleanImagePath(imagePath)
 	if err != nil || clean == "" {
@@ -154,9 +158,9 @@ func (b *Builder) AddDirectory(imagePath string, attributes Attributes, modified
 	return b.addEntry(&entry{imagePath: clean, parent: parent, level: parent.level + 1, directory: true, size: 23, attributes: attributes}, modified)
 }
 
-// AddCLIPath preserves mkatr's command-line directory semantics: a directory
-// argument creates a directory entry, and later files beneath that host path
-// are placed inside it. Files otherwise go in MAIN.
+// AddCLIPath keeps old mkatr argument behavior: mention a directory first,
+// then later files below that host path land inside it (everything else is in
+// MAIN).
 func (b *Builder) AddCLIPath(hostPath string, attributes Attributes, boot bool) error {
 	info, err := os.Stat(hostPath)
 	if err != nil {
@@ -211,7 +215,7 @@ func pathWithin(parent, child string) bool {
 }
 
 func cleanImagePath(value string) (string, error) {
-	value = strings.TrimSpace(strings.ReplaceAll(value, "\\", "/"))
+	value = strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(value, "\\", "/"), ">", "/"))
 	value = strings.TrimPrefix(value, "./")
 	value = strings.Trim(value, "/")
 	if value == "" {
@@ -318,7 +322,7 @@ func displayName(name [11]byte) string {
 	return base
 }
 
-// Create writes an ATR image atomically.
+// Create builds and atomically writes an ATR.
 func (b *Builder) Create(output string, options Options) (Result, error) {
 	image, result, err := b.Build(options)
 	if err != nil {
@@ -348,9 +352,12 @@ func (b *Builder) Create(output string, options Options) (Result, error) {
 	return result, nil
 }
 
-// Build returns the complete ATR file bytes.
+// Build returns the complete ATR file (header and all).
 func (b *Builder) Build(options Options) ([]byte, Result, error) {
 	filesystem := strings.ToLower(strings.TrimSpace(options.Filesystem))
+	if filesystem == "dos2" || filesystem == "atari-dos2" || filesystem == "ataridos" {
+		return b.buildDOS2(options)
+	}
 	if filesystem == "" || filesystem == "sdfs" || filesystem == "spartados" {
 		filesystem = "sparta"
 	}
@@ -360,16 +367,30 @@ func (b *Builder) Build(options Options) ([]byte, Result, error) {
 	eosfs := filesystem == "eos" || filesystem == "eosfs"
 	if eosfs {
 		for _, item := range b.entries {
-			if item.boot {
-				return nil, Result{}, errors.New("EOSFS extent lists are not supported by the SDFS bootloader; add the application without -b and mount the image under EOS")
+			if item.boot && len(options.BootSectors) != 384 {
+				return nil, Result{}, errors.New("an EOSFS boot file requires compatible 384-byte EOS boot sectors")
 			}
 		}
+	}
+	if len(options.BootSectors) != 0 && len(options.BootSectors) != 384 {
+		return nil, Result{}, errors.New("boot sectors must be exactly 384 bytes (3 x 128)")
+	}
+	if options.Revision == 0 {
+		if eosfs {
+			options.Revision = 0x45
+		} else {
+			options.Revision = 0x20
+		}
+	}
+	if (!eosfs && options.Revision != 0x20 && options.Revision != 0x21) ||
+		(eosfs && options.Revision != 0x45 && options.Revision != 0x46) {
+		return nil, Result{}, fmt.Errorf("revision $%02X is not valid for %s", options.Revision, filesystem)
 	}
 	if options.BootPage == 0 {
 		options.BootPage = 7
 	}
 	if options.BootPage <= 3 || options.BootPage >= 0xf0 {
-		return nil, Result{}, errors.New("boot page must be from 4 to 239")
+		return nil, Result{}, errors.New("boot page must be 4..239")
 	}
 	maxSize := imageSize(65535, 256)
 	if options.MinimumSize < 0 || options.MinimumSize > maxSize {
@@ -378,15 +399,15 @@ func (b *Builder) Build(options Options) ([]byte, Result, error) {
 	var fs *spartaFS
 	if options.SectorSize != 0 || options.Sectors != 0 {
 		if (options.SectorSize != 128 && options.SectorSize != 256) || options.Sectors < 6 || options.Sectors > 65535 {
-			return nil, Result{}, errors.New("explicit ATR geometry requires 128 or 256 byte sectors and 6..65535 sectors")
+			return nil, Result{}, errors.New("explicit geometry needs 128/256-byte sectors and 6..65535 sectors")
 		}
-		fs, _ = b.buildSparta(options.SectorSize, options.Sectors, options.BootPage, eosfs)
+		fs, _ = b.buildSparta(options.SectorSize, options.Sectors, options.BootPage, eosfs, options)
 	} else if options.ExactSize {
 		if options.MinimumSize <= imageSize(65535, 128) {
-			fs, _ = b.buildSparta(128, 65535, options.BootPage, eosfs)
+			fs, _ = b.buildSparta(128, 65535, options.BootPage, eosfs, options)
 		}
 		if fs == nil {
-			fs, _ = b.buildSparta(256, 65535, options.BootPage, eosfs)
+			fs, _ = b.buildSparta(256, 65535, options.BootPage, eosfs, options)
 		}
 		if fs != nil {
 			nsec, ssec := 65535-fs.freeSectors(), fs.sectorSize
@@ -394,7 +415,7 @@ func (b *Builder) Build(options Options) ([]byte, Result, error) {
 				nsec = imageSectors(options.MinimumSize, ssec)
 			}
 			for ; nsec > 5 && imageSize(nsec, ssec) >= options.MinimumSize; nsec-- {
-				next, err := b.buildSparta(ssec, nsec, options.BootPage, eosfs)
+				next, err := b.buildSparta(ssec, nsec, options.BootPage, eosfs, options)
 				if err != nil {
 					break
 				}
@@ -412,7 +433,7 @@ func (b *Builder) Build(options Options) ([]byte, Result, error) {
 			if imageSize(size.sectors, size.sectorSize) < options.MinimumSize {
 				continue
 			}
-			candidate, err := b.buildSparta(size.sectorSize, size.sectors, options.BootPage, eosfs)
+			candidate, err := b.buildSparta(size.sectorSize, size.sectors, options.BootPage, eosfs, options)
 			if err == nil {
 				fs = candidate
 				break
@@ -420,7 +441,7 @@ func (b *Builder) Build(options Options) ([]byte, Result, error) {
 		}
 	}
 	if fs == nil {
-		return nil, Result{}, errors.New("cannot create an ATR image large enough")
+		return nil, Result{}, errors.New("nothing fits ... cannot make an ATR large enough")
 	}
 	image := writeATR(fs.data, fs.sectorSize, fs.sectors)
 	return image, Result{SectorSize: fs.sectorSize, Sectors: fs.sectors, Bytes: len(image)}, nil
@@ -472,11 +493,11 @@ type spartaFS struct {
 	eosfs                                                      bool
 }
 
-func (b *Builder) buildSparta(sectorSize, sectors, bootPage int, eosfs bool) (*spartaFS, error) {
+func (b *Builder) buildSparta(sectorSize, sectors, bootPage int, eosfs bool, options Options) (*spartaFS, error) {
 	fs := &spartaFS{data: make([]byte, sectorSize*sectors), sectors: sectors, bitmap: 4, sectorSize: sectorSize, eosfs: eosfs}
 	fs.bitmapCount = ((sectors+8)/8 + sectorSize - 1) / sectorSize
 	fs.current = 4 + fs.bitmapCount
-	fs.writeBoot(bootPage)
+	fs.writeBoot(bootPage, options.BootSectors)
 	for i := fs.current; i <= fs.sectors; i++ {
 		fs.freeSector(i)
 	}
@@ -567,7 +588,9 @@ func (b *Builder) buildSparta(sectorSize, sectors, bootPage int, eosfs bool) (*s
 		return nil, errors.New("internal error: no MAIN directory")
 	}
 	crc := crc32.ChecksumIEEE(fs.data)
-	fs.data[1], fs.data[7] = 0x03, 0x80
+	if len(options.BootSectors) == 0 {
+		fs.data[1], fs.data[7] = 0x03, 0x80
+	}
 	binary.LittleEndian.PutUint16(fs.data[9:11], uint16(mainSector))
 	binary.LittleEndian.PutUint16(fs.data[11:13], uint16(fs.sectors))
 	binary.LittleEndian.PutUint16(fs.data[13:15], uint16(fs.sectors-fs.current+1))
@@ -577,14 +600,24 @@ func (b *Builder) buildSparta(sectorSize, sectors, bootPage int, eosfs bool) (*s
 	binary.LittleEndian.PutUint16(fs.data[20:22], uint16(fs.current))
 	copy(fs.data[22:26], "DSK_")
 	fs.data[26], fs.data[27], fs.data[28], fs.data[29] = hex(crc>>8), hex(crc>>12), hex(crc>>16), hex(crc>>20)
+	if volume := volumeName(options.Volume); volume != "" {
+		copy(fs.data[22:30], volume)
+	}
 	fs.data[30] = 0x28
 	if fs.sectorSize == 128 {
 		fs.data[31] = 128
 	}
-	fs.data[32], fs.data[39] = 0x20, byte(crc)
+	fs.data[32], fs.data[39] = byte(options.Revision), byte(crc)
+	if options.Revision == 0x21 {
+		binary.LittleEndian.PutUint16(fs.data[33:35], uint16(fs.sectorSize))
+		binary.LittleEndian.PutUint16(fs.data[35:37], uint16((fs.sectorSize-4)/2))
+		fs.data[37] = 1
+	}
 	if eosfs {
-		copy(fs.data[22:30], "EOS     ")
-		fs.data[32] = 0x45
+		if strings.TrimSpace(options.Volume) == "" {
+			copy(fs.data[22:30], "EOS     ")
+		}
+		fs.data[32] = byte(options.Revision)
 		binary.LittleEndian.PutUint16(fs.data[33:35], uint16(fs.sectorSize))
 		binary.LittleEndian.PutUint16(fs.data[35:37], uint16((fs.sectorSize-4)/2))
 		fs.data[37], fs.data[38], fs.data[39] = 1, 0, 0x5a
@@ -655,8 +688,8 @@ func (fs *spartaFS) addData(data []byte) (int, error) {
 	return first, nil
 }
 
-// addExtentData stores EOSFS data sectors contiguously where possible and
-// describes them with start/count extent pairs.
+// addExtentData keeps EOSFS sectors together when it can, then describes them
+// as start/count pairs.
 func (fs *spartaFS) addExtentData(data []byte) (int, error) {
 	if len(data) == 0 {
 		return 0, nil
@@ -774,20 +807,44 @@ func nameHash(name []byte) byte {
 	return hash
 }
 func (fs *spartaFS) freeSectors() int { return fs.sectors - fs.current + 1 }
-func (fs *spartaFS) writeBoot(page int) {
+func (fs *spartaFS) writeBoot(page int, custom []byte) {
 	if fs.sectors < 3 {
 		return
 	}
 	data := make([]byte, 384)
-	boot, reloc := boot128[:], boot128Reloc[:]
-	if fs.sectorSize == 256 {
-		boot, reloc = boot256[:], boot256Reloc[:]
-	}
-	copy(data, boot)
-	for _, position := range reloc {
-		data[position-1] = byte(int(data[position-1]) + page - 16)
+	if len(custom) == 384 {
+		copy(data, custom)
+	} else {
+		boot, reloc := boot128[:], boot128Reloc[:]
+		if fs.sectorSize == 256 {
+			boot, reloc = boot256[:], boot256Reloc[:]
+		}
+		copy(data, boot)
+		for _, position := range reloc {
+			data[position-1] = byte(int(data[position-1]) + page - 16)
+		}
 	}
 	for i := 0; i < 3; i++ {
 		copy(fs.data[fs.sectorSize*i:fs.sectorSize*i+128], data[128*i:128*(i+1)])
 	}
+}
+
+func volumeName(value string) string {
+	value = strings.ToUpper(strings.TrimSpace(value))
+	if value == "" {
+		return ""
+	}
+	var out [8]byte
+	for index := range out {
+		out[index] = ' '
+	}
+	for index := 0; index < len(value) && index < len(out); index++ {
+		c := value[index]
+		if (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-' {
+			out[index] = c
+		} else {
+			out[index] = '_'
+		}
+	}
+	return string(out[:])
 }

@@ -6,6 +6,7 @@
 #   Atari800 core (libatari800)     third_party/atari800/atari800-* (GPL-2.0+)
 #   atari800-studio helper          third_party/atari800/studio-helper
 #   mkatr-go                        cmd/mkatr-go, third_party/mkatrgo
+#   ExtendedOS source/license       third_party/exoperatingsystem (MIT)
 #   EOS cartridge                   third_party/EOS.car
 #
 # Output: build/stage/<os>-<arch>/tools, with each tool's license beside it.
@@ -98,6 +99,7 @@ cp "$EXBASIC_SRC/LICENSE" "$STAGE/licenses/exbasic-LICENSE.txt"
 cp third_party/exbasic/NOTICE.md "$STAGE/licenses/exbasic-NOTICE.md"
 cp third_party/mkatrgo/LICENSE "$STAGE/licenses/mkatr-go-LICENSE.txt"
 cp third_party/mkatrgo/NOTICE.md "$STAGE/licenses/mkatr-go-NOTICE.md"
+cp third_party/exoperatingsystem/LICENSE "$STAGE/licenses/EOS-LICENSE.txt"
 
 # ---- Verify ----------------------------------------------------------------
 say "Verifying staged tools"

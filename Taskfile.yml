@@ -29,6 +29,10 @@ tasks:
       - third_party/atari800/atari800-7.2.1/configure
       - third_party/atari800/studio-helper/main.c
       - third_party/mkatrgo/**/*.go
+      - third_party/mkatrgo/go.mod
+      - third_party/mkatrgo/go.sum
+      - third_party/exoperatingsystem/LICENSE
+      - third_party/EOS.car
       - cmd/mkatr-go/**/*.go
       - build/tools/build-toolchain.sh
     generates:

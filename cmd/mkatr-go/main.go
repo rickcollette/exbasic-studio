@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"exbasicstudio/third_party/mkatrgo"
+	"github.com/megalith/mkatrgo"
 )
 
 const version = "mkatr-go 1.0.0 (compatible with dmsc/mkatr)"

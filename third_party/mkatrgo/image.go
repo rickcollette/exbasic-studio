@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// ImageEntry is one file or directory stored in an ATR image.
+// ImageEntry is one thing in the image (file or directory).
 type ImageEntry struct {
 	Path       string     `json:"path"`
 	Name       string     `json:"name"`
@@ -25,19 +25,22 @@ type ImageEntry struct {
 	data       []byte
 }
 
-// Image is an editable SDFS or EOSFS ATR image.
+// Image is an opened, editable ATR image.
 type Image struct {
-	Path       string       `json:"path"`
-	Filesystem string       `json:"filesystem"`
-	SectorSize int          `json:"sectorSize"`
-	Sectors    int          `json:"sectors"`
-	Bytes      int          `json:"bytes"`
-	FreeBytes  int          `json:"freeBytes"`
-	Entries    []ImageEntry `json:"entries"`
-	bootPage   int
+	Path        string       `json:"path"`
+	Filesystem  string       `json:"filesystem"`
+	Revision    int          `json:"revision"`
+	Volume      string       `json:"volume"`
+	SectorSize  int          `json:"sectorSize"`
+	Sectors     int          `json:"sectors"`
+	Bytes       int          `json:"bytes"`
+	FreeBytes   int          `json:"freeBytes"`
+	Entries     []ImageEntry `json:"entries"`
+	bootPage    int
+	bootSectors []byte
 }
 
-// OpenImage reads and validates an ATR image and its SDFS/EOSFS directory tree.
+// OpenImage opens an ATR and does the basic structure checks.
 func OpenImage(path string) (*Image, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -45,7 +48,7 @@ func OpenImage(path string) (*Image, error) {
 	}
 	image, err := ParseImage(raw)
 	if err != nil {
-		return nil, fmt.Errorf("read ATR %q: %w", path, err)
+		return nil, fmt.Errorf("open ATR %q: %w", path, err)
 	}
 	abs, err := filepath.Abs(path)
 	if err == nil {
@@ -55,18 +58,18 @@ func OpenImage(path string) (*Image, error) {
 	return image, nil
 }
 
-// ParseImage decodes an ATR container and its SDFS/EOSFS volume.
+// ParseImage decodes ATR bytes (container + filesystem).
 func ParseImage(raw []byte) (*Image, error) {
 	if len(raw) < 16 || raw[0] != 0x96 || raw[1] != 0x02 {
-		return nil, errors.New("not an ATR image")
+		return nil, errors.New("this does not look like an ATR image")
 	}
 	payloadSize := (int(raw[2]) | int(raw[3])<<8 | int(raw[6])<<16) * 16
 	if payloadSize <= 0 || len(raw) < 16+payloadSize {
-		return nil, errors.New("truncated ATR payload")
+		return nil, errors.New("ATR payload ends early (truncated image)")
 	}
 	sectorSize := int(binary.LittleEndian.Uint16(raw[4:6]))
 	if sectorSize != 128 && sectorSize != 256 {
-		return nil, fmt.Errorf("unsupported ATR sector size %d", sectorSize)
+		return nil, fmt.Errorf("%d-byte ATR sectors are not supported (use 128 or 256)", sectorSize)
 	}
 	sectors := payloadSize / sectorSize
 	if sectorSize == 256 {
@@ -92,9 +95,12 @@ func ParseImage(raw []byte) (*Image, error) {
 	if len(logical) < 42 {
 		return nil, errors.New("missing filesystem header")
 	}
+	if looksDOS2(logical, sectorSize, sectors) {
+		return parseDOS2(logical, sectorSize, sectors, 16+payloadSize)
+	}
 	revision := logical[32]
 	eos := revision == 0x45 || revision == 0x46
-	if !eos && revision != 0x20 {
+	if !eos && revision != 0x20 && revision != 0x21 {
 		return nil, fmt.Errorf("unsupported SDFS/EOSFS revision $%02X", revision)
 	}
 	reader.eos = eos
@@ -119,7 +125,12 @@ func ParseImage(raw []byte) (*Image, error) {
 	if bootPage < 4 || bootPage > 239 {
 		bootPage = 7
 	}
-	return &Image{Filesystem: filesystem, SectorSize: sectorSize, Sectors: sectors, Bytes: 16 + payloadSize, FreeBytes: freeSectors * sectorSize, Entries: entries, bootPage: bootPage}, nil
+	bootSectors := make([]byte, 0, 384)
+	for index := 0; index < 3; index++ {
+		bootSectors = append(bootSectors, logical[index*sectorSize:index*sectorSize+128]...)
+	}
+	volume := strings.TrimRight(string(logical[22:30]), " \x00")
+	return &Image{Filesystem: filesystem, Revision: int(revision), Volume: volume, SectorSize: sectorSize, Sectors: sectors, Bytes: 16 + payloadSize, FreeBytes: freeSectors * sectorSize, Entries: entries, bootPage: bootPage, bootSectors: bootSectors}, nil
 }
 
 type imageReader struct {
@@ -241,7 +252,7 @@ func (r *imageReader) readDirectory(mapSector int, parent string, ancestors map[
 		childMap := int(binary.LittleEndian.Uint16(row[1:3]))
 		childSize := int(row[3]) | int(row[4])<<8 | int(row[5])<<16
 		directory := row[0]&0x20 != 0
-		entry := ImageEntry{Path: path, Name: name, Size: childSize, Directory: directory, Attributes: Attributes(row[0] & 0x07), Boot: !r.eos && childMap == r.bootMap, Modified: decodeTimestamp(row[17:23])}
+		entry := ImageEntry{Path: path, Name: name, Size: childSize, Directory: directory, Attributes: Attributes(row[0] & 0x07), Boot: childMap != 0 && childMap == r.bootMap, Modified: decodeTimestamp(row[17:23])}
 		if directory {
 			children, err := r.readDirectory(childMap, path, ancestors)
 			if err != nil {
@@ -269,8 +280,22 @@ func cloneSet(input map[int]bool) map[int]bool {
 }
 
 func displayNameBytes(value []byte) string {
-	base := strings.TrimRight(string(value[:8]), " \x00")
-	ext := strings.TrimRight(string(value[8:11]), " \x00")
+	clean := func(input []byte) string {
+		output := make([]byte, 0, len(input))
+		for _, value := range input {
+			value &= 0x7f
+			if value == ' ' || value == 0 {
+				continue
+			}
+			if value < ' ' || value == '/' || value == '\\' || value == '.' || value > '~' {
+				value = '_'
+			}
+			output = append(output, value)
+		}
+		return string(output)
+	}
+	base := clean(value[:8])
+	ext := clean(value[8:11])
 	if ext != "" {
 		return base + "." + ext
 	}
@@ -292,7 +317,7 @@ func decodeTimestamp(value []byte) time.Time {
 	return result
 }
 
-// Save rewrites the image atomically while preserving its geometry and filesystem.
+// Save rewrites the image atomically (same geometry, filesystem, and boot code).
 func (image *Image) Save(path string) error {
 	builder := NewBuilder()
 	entries := append([]ImageEntry(nil), image.Entries...)
@@ -322,11 +347,66 @@ func (image *Image) Save(path string) error {
 			return err
 		}
 	}
-	_, err := builder.Create(path, Options{Filesystem: image.Filesystem, BootPage: image.bootPage, SectorSize: image.SectorSize, Sectors: image.Sectors})
+	_, err := builder.Create(path, Options{Filesystem: image.Filesystem, Revision: image.Revision, Volume: image.Volume, BootPage: image.bootPage, SectorSize: image.SectorSize, Sectors: image.Sectors, BootSectors: image.bootSectors})
 	return err
 }
 
-// Put imports host files or directory trees into an image directory.
+// SetBoot picks the file this disk boots. EOSFS also needs its matching loader
+// installed ... the normal EOS profile already handles that.
+func (image *Image) SetBoot(path string) error {
+	clean, err := cleanImagePath(strings.ReplaceAll(path, ">", "/"))
+	if err != nil || clean == "" {
+		return errors.New("boot file path is empty ... pick a file in the image")
+	}
+	if image.Filesystem == "dos2" && !strings.EqualFold(clean, "DOS.SYS") {
+		return errors.New("Atari DOS 2 boots DOS.SYS from the root (that name/location is fixed)")
+	}
+	found := false
+	for index := range image.Entries {
+		image.Entries[index].Boot = false
+		if strings.EqualFold(image.Entries[index].Path, clean) {
+			if image.Entries[index].Directory || image.Entries[index].Size == 0 {
+				return fmt.Errorf("boot entry %q must be a nonempty file", clean)
+			}
+			image.Entries[index].Boot = true
+			found = true
+		}
+	}
+	if !found {
+		return fmt.Errorf("ATR entry %q was not found", clean)
+	}
+	return nil
+}
+
+// SetBootSectors installs the three 128-byte sectors Atari OS reads at boot.
+func (image *Image) SetBootSectors(data []byte) error {
+	if len(data) != 384 || data[0] != 0 || data[1] != 3 {
+		return errors.New("boot loader must be 3 x 128-byte sectors (starting with 00 03)")
+	}
+	image.bootSectors = append(image.bootSectors[:0], data...)
+	return nil
+}
+
+// ChangeAttributes flips the p/h/a flags on one entry.
+func (image *Image) ChangeAttributes(path string, set, clear Attributes) error {
+	clean, err := cleanImagePath(path)
+	if err != nil || clean == "" {
+		return errors.New("ATR entry path is empty")
+	}
+	if image.Filesystem == "dos2" && (set|clear)&(AttributeHidden|AttributeArchived) != 0 {
+		return errors.New("Atari DOS 2 only has the protected attribute (no hidden/archive flags)")
+	}
+	for index := range image.Entries {
+		if strings.EqualFold(image.Entries[index].Path, clean) {
+			image.Entries[index].Attributes |= set
+			image.Entries[index].Attributes &^= clear
+			return nil
+		}
+	}
+	return fmt.Errorf("ATR entry %q was not found", clean)
+}
+
+// Put copies host files/trees into a directory in the image.
 func (image *Image) Put(hostPaths []string, destination string) error {
 	destination, err := cleanImagePath(destination)
 	if err != nil {
@@ -374,7 +454,7 @@ func (image *Image) importHost(hostPath, imagePath string, item os.DirEntry) err
 		return err
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("symbolic links cannot be imported: %s", hostPath)
+		return fmt.Errorf("not copying symbolic link %s (follow it explicitly if that is intended)", hostPath)
 	}
 	entry := ImageEntry{Path: filepath.ToSlash(imagePath), Name: filepath.Base(imagePath), Directory: info.IsDir(), Modified: info.ModTime()}
 	if !entry.Directory {
@@ -401,7 +481,7 @@ func (image *Image) replaceEntry(entry ImageEntry) {
 	image.Entries = append(image.Entries, entry)
 }
 
-// Mkdir creates an empty image directory.
+// Mkdir adds an empty directory.
 func (image *Image) Mkdir(path string) error {
 	clean, err := cleanImagePath(path)
 	if err != nil || clean == "" {
@@ -414,11 +494,11 @@ func (image *Image) Mkdir(path string) error {
 	return nil
 }
 
-// Remove deletes an entry and, for a directory, all descendants.
+// Remove drops an entry (and everything below it, if it is a directory).
 func (image *Image) Remove(path string) error {
 	clean, err := cleanImagePath(path)
 	if err != nil || clean == "" {
-		return errors.New("select an ATR entry to remove")
+		return errors.New("nothing selected to remove")
 	}
 	prefix := strings.ToUpper(clean) + "/"
 	output := image.Entries[:0]
@@ -438,17 +518,27 @@ func (image *Image) Remove(path string) error {
 	return nil
 }
 
-// Rename moves or renames an entry and all directory descendants.
+// Rename moves/renames an entry (directory children move with it).
 func (image *Image) Rename(oldPath, newPath string) error {
 	oldClean, err := cleanImagePath(oldPath)
 	if err != nil || oldClean == "" {
-		return errors.New("select an ATR entry to rename")
+		return errors.New("nothing selected to rename")
 	}
 	newClean, err := cleanImagePath(newPath)
 	if err != nil || newClean == "" {
 		return errors.New("new ATR path is empty")
 	}
 	oldUpper, prefix := strings.ToUpper(oldClean), strings.ToUpper(oldClean)+"/"
+	newUpper := strings.ToUpper(newClean)
+	if strings.HasPrefix(newUpper, prefix) {
+		return errors.New("cannot move an entry inside itself ... that makes a loop")
+	}
+	for _, entry := range image.Entries {
+		upper := strings.ToUpper(entry.Path)
+		if upper == newUpper && upper != oldUpper {
+			return fmt.Errorf("ATR entry %q already exists", newClean)
+		}
+	}
 	found := false
 	for index := range image.Entries {
 		upper := strings.ToUpper(image.Entries[index].Path)
@@ -465,7 +555,7 @@ func (image *Image) Rename(oldPath, newPath string) error {
 	return nil
 }
 
-// Extract copies one image entry to an exact host path.
+// Extract copies one entry to exactly the host path given.
 func (image *Image) Extract(path, output string) error {
 	var selected *ImageEntry
 	for index := range image.Entries {
@@ -492,7 +582,10 @@ func (image *Image) Extract(path, output string) error {
 			continue
 		}
 		relative := filepath.FromSlash(entry.Path[len(selected.Path)+1:])
-		target := filepath.Join(output, relative)
+		target, err := extractionTarget(output, relative)
+		if err != nil {
+			return err
+		}
 		if entry.Directory {
 			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
@@ -507,6 +600,45 @@ func (image *Image) Extract(path, output string) error {
 		}
 	}
 	return nil
+}
+
+// ExtractAll copies the whole image tree into a host directory.
+func (image *Image) ExtractAll(output string) error {
+	if err := os.MkdirAll(output, 0o755); err != nil {
+		return err
+	}
+	for _, entry := range image.Entries {
+		target, err := extractionTarget(output, filepath.FromSlash(entry.Path))
+		if err != nil {
+			return err
+		}
+		if entry.Directory {
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, entry.data, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func extractionTarget(root, relative string) (string, error) {
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	target := filepath.Join(root, relative)
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("unsafe ATR extraction path %q", relative)
+	}
+	return target, nil
 }
 
 func joinImagePath(parts ...string) string {
