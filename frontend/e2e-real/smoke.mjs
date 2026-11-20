@@ -26,7 +26,7 @@ fs.rmSync(project, { recursive: true, force: true });
 fs.mkdirSync(project, { recursive: true });
 fs.writeFileSync(path.join(project, 'new.bas'), ['PRINT "HI"', 'GET K', ''].join('\n'));
 
-const child = spawn(exe, [], { cwd: scratch, env: { ...process.env, APPDATA: appdata, XDG_CONFIG_HOME: appdata, EXBASIC_STUDIO_DEBUG_PORT: port, EXBASIC_STUDIO_CLAUDE: path.join(scratch, 'no-claude.exe') }, stdio: 'ignore' });
+const child = spawn(exe, [], { cwd: scratch, env: { ...process.env, APPDATA: appdata, XDG_CONFIG_HOME: appdata, EXBASIC_STUDIO_DEBUG_PORT: port }, stdio: 'ignore' });
 let browser;
 for (let attempt = 0; attempt < 40 && !browser; attempt++) {
   try { browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`); } catch { await new Promise(resolve => setTimeout(resolve, 500)); }
@@ -110,11 +110,6 @@ try {
   await page.waitForSelector('.joystick-state:has-text("15")', { timeout: 5000 });
   check(await page.locator('text=Atari800 stopped').count() === 0, 'the helper accepts joystick requests');
 
-  // Claude Code: without the CLI, Studio offers the install command.
-  await page.getByRole('button', { name: 'Open Claude Code' }).click();
-  await page.waitForSelector('text=Claude Code is not installed', { timeout: 5000 });
-  check(await page.locator('text=claude.ai/install').count() > 0, 'Claude Code offers its install command when it is missing');
-  await page.getByRole('button', { name: 'Cancel' }).click();
   check(pageErrors.length === 0, `no script errors in the window${pageErrors.length ? ': ' + pageErrors.join('; ') : ''}`);
 } catch (error) {
   check(false, `scenario aborted: ${error.message}`);

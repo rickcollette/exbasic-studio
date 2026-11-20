@@ -65,6 +65,9 @@ These are checked in, and CI fails if they are stale:
 
 ## Conventions
 
+- Documentation follows [`WRITING_STYLE.md`](WRITING_STYLE.md). Keep it direct,
+  useful and technically accurate; do not turn ordinary features into a sales
+  pitch.
 - Backend: every method of `StudioService` is callable from the UI, so it
   validates its arguments. External programs are started with an argument
   vector, never a shell string. Anything that runs workspace-controlled

@@ -19,19 +19,6 @@ export interface BuildRequest {
 }
 
 /**
- * ClaudeStatus tells the UI whether Claude Code can be started.
- */
-export interface ClaudeStatus {
-    "available": boolean;
-    "path"?: string;
-
-    /**
-     * Install is the command that installs Claude Code on this platform.
-     */
-    "install": string;
-}
-
-/**
  * DebugRequest starts a source-level debugging session for the last build.
  */
 export interface DebugRequest {

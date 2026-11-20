@@ -7,7 +7,7 @@ import (
 
 // CommandLine returns the compiler and arguments that build the project, as
 // Build runs them but without the metadata file Studio reads afterwards. It
-// lets someone (or an assistant) build from a terminal exactly as Studio does.
+// lets someone build from a terminal exactly as Studio does.
 func CommandLine(p *project.Project) (string, []string, error) {
 	cfg := p.Config
 	if err := project.ValidateConfig(cfg); err != nil {

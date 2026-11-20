@@ -430,33 +430,6 @@ export class TerminalStore {
     return info.id;
   }
 
-  /** Starts Claude Code in a terminal session in the project folder. When
-   * it is not installed, offers the install command instead. */
-  async openClaude(cols = 120, rows = 30): Promise<string | null> {
-    if (!this.workspace.project) return null;
-    const status = await native().studio.ClaudeStatus();
-    if (!status.available) {
-      const copy = await this.ui.confirm({
-        title: 'Claude Code is not installed',
-        message: 'Install the Claude Code command-line tool, then choose Claude Code again. Run this in a terminal:',
-        detail: status.install,
-        confirmLabel: 'Copy Install Command',
-      });
-      if (copy) {
-        await native().clipboard.setText(status.install);
-        this.ui.status = 'Install command copied';
-      }
-      return null;
-    }
-    if (!(await this.workspace.requestTrust('start Claude Code in this folder'))) return null;
-    const info = await this.ui.task<TerminalInfo>('Starting Claude Code', () => native().studio.ClaudeOpen(cols, rows), { quiet: true });
-    if (!info) return null;
-    const others = this.sessions.filter(session => session.title.startsWith('Claude Code')).length;
-    this.sessions = [...this.sessions, { id: info.id, title: others ? `Claude Code ${others + 1}` : 'Claude Code', exited: false, exitCode: 0 }];
-    this.activeId = info.id;
-    return info.id;
-  }
-
   input(id: string, data: string): void { void native().studio.TerminalWrite(id, data).catch(() => {}); }
   resize(id: string, cols: number, rows: number): void { void native().studio.TerminalResize(id, cols, rows).catch(() => {}); }
 

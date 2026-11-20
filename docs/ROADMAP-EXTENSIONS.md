@@ -66,5 +66,4 @@ Sketch of a manifest (subject to change):
   and memory, remote debugging.
 - Git: rebase, cherry-pick, bisect, submodules and cloning from the UI (use
   the integrated terminal in 1.0).
-- Remote (SSH) workspaces and AI assistance were removed from 1.0 and are
-  not scheduled.
+- Remote (SSH) workspaces are not scheduled.

@@ -1,8 +1,8 @@
 # Changelog
 
-All notable changes to exBASIC Studio are recorded here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
-uses [Semantic Versioning](https://semver.org/).
+All changes to exBASIC Studio are here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
+[Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
@@ -26,6 +26,16 @@ uses [Semantic Versioning](https://semver.org/).
 - The backend gained `ReadBinaryFile` and `SaveBinaryFile` (base64, at most
   8 MiB, inside the workspace only) for these binary assets.
 
+### Changed
+
+- The project now uses the custom Flesh and Bone License instead of MIT. Read
+  `LICENSE` before redistributing a modified version.
+
+### Removed
+
+- The external project-assistance integrations and their command, side-bar,
+  terminal and backend plumbing.
+
 ## [1.0.0-rc.2]
 
 ### Added
@@ -40,13 +50,6 @@ uses [Semantic Versioning](https://semver.org/).
   keyboard with the Atari key each key produces, highlights keys as they are
   pressed on the emulator screen, and shows the joystick keys while the
   keyboard joystick is on.
-- **Claude Code.** *Claude Code: Open in Terminal* (the sparkle button in the
-  editor toolbar, or the Terminal menu) starts the Claude Code CLI in a
-  terminal tab in the project folder. Studio gives it read access to the
-  bundled exBASIC manual and a briefing with the project's exact build
-  command, so it compiles and checks its own changes. The briefing is kept in
-  Studio's settings folder; nothing is written into the project. When Claude
-  Code is not installed, Studio offers the install command.
 - **More Atari keys.** Home is CLEAR, End is HELP, and Pause or F8 is BREAK
   (F8 still pauses while debugging).
 
@@ -171,7 +174,6 @@ platform artifact passes the checks in `docs/RELEASE_CHECKLIST.md`.
 
 ### Removed
 
-- The Claude Code side bar and its backend.
 - SSH remote workspaces.
 - The extensions view and manifest discovery. Extensions are planned after
   1.0; see `docs/ROADMAP-EXTENSIONS.md`.

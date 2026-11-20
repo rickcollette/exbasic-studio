@@ -3,12 +3,6 @@ bin/
 frontend/node_modules/
 frontend/dist/
 !frontend/dist/.keep
-build/linux/appimage/build/
-build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
-build/ios/xcode/overlay.json
-build/ios/xcode/gen/
-build/android/overlay.json
-build/android/gen/
 wails_windows_*.syso
 .DS_Store
 *.log
@@ -19,16 +13,13 @@ wails_windows_*.syso
 *.lst
 *.o
 *.asm~
-
-# Vendored-source build products and oversized reference material
-third_party/atari800/atari800-7.2.1/src/*.exe
-third_party/atari800/atari800-7.2.1/src/*.a
-third_party/exbasic/source/*.pdf
-third_party/exbasic/source/build/
+third_party/
 frontend/test-results/
 frontend/playwright-report/
-build/toolchain/
-build/stage/
-
-# Gradle caches created by editor tooling inside vendored sources
+build/
 .gradle/
+DIST/
+.private/
+scripts/
+publish_release.py
+remote_build.py

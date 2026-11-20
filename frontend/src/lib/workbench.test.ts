@@ -500,31 +500,6 @@ describe('build, run and debug', () => {
 describe('terminal', () => {
   beforeEach(() => createProject());
 
-  it('opens Claude Code in a terminal tab for the project', async () => {
-    await wb.execute('claude.open');
-    await settle();
-    expect(wb.ui.panelTab).toBe('terminal');
-    expect(wb.ui.panelHeight).toBeGreaterThanOrEqual(240);
-    expect(wb.terminal.sessions.map(session => session.title)).toEqual(['Claude Code']);
-    let screen = '';
-    wb.terminal.attach(wb.terminal.activeId, data => { screen += data; });
-    expect(screen).toContain('Claude Code');
-    await wb.execute('claude.open');
-    expect(wb.terminal.sessions.map(session => session.title)).toEqual(['Claude Code', 'Claude Code 2']);
-  });
-
-  it('offers the install command when Claude Code is missing', async () => {
-    mock.claude.available = false;
-    const opening = wb.execute('claude.open');
-    await settle();
-    expect(wb.ui.dialog?.title).toBe('Claude Code is not installed');
-    await answer('confirm');
-    await opening;
-    expect(mock.clipboard.text).toContain('claude.ai/install');
-    expect(wb.terminal.sessions).toEqual([]);
-    expect(mock.calls.some(call => call.startsWith('ClaudeOpen'))).toBe(false);
-  });
-
   it('opens a session, streams output in order and reports exit', async () => {
     const id = (await wb.terminal.open(80, 24))!;
     let screen = '';

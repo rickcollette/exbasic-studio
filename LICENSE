@@ -1,27 +1,106 @@
-MIT License
+THE FLESH AND BONE LICENSE
+Version 1.0 - November 2026
 
-Copyright (c) 2026 exBASIC Studio contributors
+Copyright (c) 2026 megalith (Rick Collette, megalith@root.sh)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This tool is here so people can learn from it. Read it. Tear it apart. Change
+it. Make something weird. Give it away. Sell it. I don't care.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+There is one hard rule: use AI to write programs in exBASIC if you want. Do
+not use it to write exBASIC itself.
+
+1. DEFINITIONS
+
+"Software" means exBASIC Studio and the original source code, documentation,
+art, music, level data and other material distributed under this license. It
+does not include separately licensed third-party material.
+
+"User Program" means a program, game, application, source file, asset or other
+work created to be compiled, assembled, packaged, run or otherwise processed
+with the Software. A User Program is not part of the Software merely because
+the Software was used to create or process it.
+
+"Generative AI" means a machine-learning system that generates or materially
+rewrites code, text, images, audio or other expressive material in response to
+prompts, examples, training data or supplied context. Compilers, assemblers,
+linkers, debuggers, formatters, converters, compression tools, build systems
+and deterministic generators are not Generative AI merely because they are
+software.
+
+2. WHAT YOU CAN DO
+
+Permission is granted, free of charge, to use, run, study, copy, modify,
+publish, distribute, sublicense and sell the Software and its source, art,
+music, level data and other included material, subject to the rule below.
+
+3. AI IS FINE FOR YOUR PROGRAMS
+
+Use Generative AI to write, change, debug or explain your User Program if you
+want. Generate a whole game, ask it to fix a compiler error or have it make
+data tables. That code is yours to publish, give away or sell.
+
+This is still true when the User Program is written in exBASIC, built by
+exBASIC Studio or informed by the exBASIC language manual.
+
+This exception does not permit Generative AI to generate or materially rewrite
+the Software itself or a derivative work based on the Software.
+
+4. THE NO-AI RULE FOR THE SOFTWARE
+
+You may not publish, distribute, sublicense, sell or otherwise release a copy,
+modification or derivative work of the Software containing code,
+documentation, art, music, writing, level data or other material generated or
+materially rewritten by Generative AI.
+
+You may not use the Software or a protected part of it as training data,
+prompt context, an example to imitate or other input to Generative AI for the
+purpose of creating, modifying or materially rewriting the Software or a
+derivative work of it.
+
+Private experiments are your business. Releasing the result is not allowed.
+
+5. HUMAN WORK IS FINE
+
+Human-written changes and human-made derivative works are allowed. That is the
+point. You may learn from the Software and use what you learned in your own
+work. You may also use general ideas, facts, methods, interfaces and game
+mechanics that copyright law does not protect.
+
+This license does not claim ownership of abstract ideas or concepts. It covers
+the actual code, text, art, music, characters, levels and specific creative
+expression found in the Software.
+
+6. KEEP THIS LICENSE
+
+Any copy or substantial portion of the Software that you release must include
+this license and the copyright notice above. You may add your own copyright
+notice for your own human-made work, but you may not remove or weaken the
+No-AI Rule for material covered by this license.
+
+7. IF YOU BREAK THE RULE
+
+Your permission under this license ends automatically if you break the No-AI
+Rule. It is restored only after every violating release is removed and every
+copy you control is destroyed.
+
+8. NO WARRANTY
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGE OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-This license applies only to original IDE code. It does not relicense the
-third-party exBASIC handbook copied into internal/manual/chapters/.
+9. IF ONE PART FAILS
+
+If a court decides that one part of this license cannot be enforced, the rest
+still applies as far as the law allows.
+
+This license applies only to original exBASIC Studio material that is not
+separately licensed. It does not relicense the third-party exBASIC handbook
+copied into internal/manual/chapters/.
 
 The separately built `mkatr-go` executable and its implementation under
 `third_party/mkatrgo/` are GPL-2.0-only. See that directory's LICENSE and

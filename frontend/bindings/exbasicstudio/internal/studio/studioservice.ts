@@ -118,22 +118,6 @@ export function CancelOperation(id: string): $CancellablePromise<boolean> {
 }
 
 /**
- * ClaudeOpen starts Claude Code in a terminal session in the project folder.
- * It is the same interactive Claude Code as in a shell; Studio only tells it
- * about exBASIC: where the bundled manual is and how this project builds.
- */
-export function ClaudeOpen(cols: number, rows: number): $CancellablePromise<terminal$0.Info> {
-    return $Call.ByID(731873088, cols, rows);
-}
-
-/**
- * ClaudeStatus reports whether the Claude Code CLI is installed.
- */
-export function ClaudeStatus(): $CancellablePromise<$models.ClaudeStatus> {
-    return $Call.ByID(3203578586);
-}
-
-/**
  * ClearRecoveryData deletes all crash-recovery copies (from Settings).
  */
 export function ClearRecoveryData(): $CancellablePromise<void> {

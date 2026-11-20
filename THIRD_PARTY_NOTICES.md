@@ -1,6 +1,7 @@
 # Third-party notices
 
-exBASIC Studio itself is licensed under the MIT License (see `LICENSE`).
+Original exBASIC Studio material uses the custom Flesh and Bone License (see
+`LICENSE`).
 
 It ships with, and runs as **separate processes**, the programs below. They
 are not linked into the Studio executable. Each is distributed under its own

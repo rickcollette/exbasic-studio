@@ -35,8 +35,6 @@ export interface MockNative extends Native {
   /** Stored crash-recovery copies for the open root. */
   recoveries: Map<string, string>;
   git: { initialized: boolean; staged: Set<string>; committed: Map<string, string>; branch: string; branches: string[]; remotes: Map<string, string>; conflict: string | null };
-  /** Whether the Claude Code CLI is "installed". */
-  claude: { available: boolean };
 }
 
 const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
@@ -77,7 +75,6 @@ export function createMockNative(): MockNative {
   let profiles = defaultProfiles();
   let operationCounter = 0;
   let terminalCounter = 0;
-  const claude = { available: true };
   const terminals = new Map<string, { seq: number; line: string }>();
   const pendingBuilds = new Map<string, () => void>();
   const emulator = { running: false, profileId: '', artifact: '', frame: 0 };
@@ -333,15 +330,6 @@ export function createMockNative(): MockNative {
       later(() => emit('terminal', { id, seq: ++terminals.get(id)!.seq, type: 'output', data: `mock-shell ${root}> `, exitCode: 0 }));
       return { id, shell: '/bin/mock-shell', dir: root, cols, rows };
     },
-    ClaudeStatus: () => ({ available: claude.available, path: claude.available ? '/usr/local/bin/claude' : '', install: 'curl -fsSL https://claude.ai/install.sh | bash' }),
-    ClaudeOpen: (cols: number, rows: number) => {
-      requireTrust('start Claude Code in it');
-      if (!claude.available) throw new Error('Claude Code is not installed');
-      const id = `term-${++terminalCounter}`;
-      terminals.set(id, { seq: 0, line: '' });
-      later(() => emit('terminal', { id, seq: ++terminals.get(id)!.seq, type: 'output', data: 'Welcome to Claude Code (mock)\r\n> ', exitCode: 0 }));
-      return { id, shell: '/usr/local/bin/claude', dir: root, cols, rows };
-    },
     TerminalWrite: (id: string, data: string) => {
       const session = terminals.get(id);
       if (!session) throw new Error('the terminal session has ended');
@@ -563,7 +551,7 @@ export function createMockNative(): MockNative {
 
   const mock: MockNative = {
     studio: api,
-    disk, calls, trusted, claude,
+    disk, calls, trusted,
     dialogQueue: [],
     recoveries: new Map(),
     git,

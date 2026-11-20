@@ -81,7 +81,6 @@
   </div>
   <span class="tab-spacer"></span>
   {#if !editors.emulatorOpen}<button class="icon-button" title="Open Atari800 screen" aria-label="Open Atari800 screen" onclick={() => wb.execute('emulator.open')}><i aria-hidden="true" class="codicon codicon-device-desktop"></i></button>{/if}
-  <button class="icon-button" title="Claude Code: open it in the terminal for this project" aria-label="Open Claude Code" disabled={!wb.commandEnabled('claude.open')} onclick={() => wb.execute('claude.open')}><i aria-hidden="true" class="codicon codicon-sparkle"></i></button>
   <button class="icon-button" title="Run without debugging (Ctrl+F5)" aria-label="Run without debugging" disabled={!wb.commandEnabled('run')} onclick={() => wb.execute('run')}><i aria-hidden="true" class="codicon codicon-play"></i></button>
   <button class="icon-button" title="Toggle editor split (Ctrl+\)" aria-label="Toggle editor split" aria-pressed={editors.splitOpen} disabled={!wb.commandEnabled('editor.split')} onclick={() => wb.execute('editor.split')}><i aria-hidden="true" class="codicon codicon-split-horizontal"></i></button>
 </div>

@@ -33,12 +33,6 @@ compiler, an Atari800-based emulator and ATR disk tools included.
 - **Git**: status, diff, staging, commits, branches, remotes, fetch/pull/push
   and merge conflict resolution.
 - **Terminal**: real shell sessions.
-- **Claude Code** in a terminal tab (sparkle button or *Claude Code: Open in
-  Terminal*), briefed on exBASIC: it reads the bundled manual and builds the
-  project the way Studio does. Requires the Claude Code CLI
-  (`irm https://claude.ai/install.ps1 | iex` on Windows,
-  `curl -fsSL https://claude.ai/install.sh | bash` elsewhere); set
-  `EXBASIC_STUDIO_CLAUDE` to use a copy installed somewhere unusual.
 - **The exBASIC manual**, searchable, inside the application.
 - **Safe by default**: folders you open are in restricted mode until you
   trust them; unsaved work is recovered after a crash; nothing is uploaded.
@@ -102,6 +96,9 @@ task check                          # everything CI runs
 [CONTRIBUTING.md](CONTRIBUTING.md) lists the prerequisites and conventions;
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the structure.
 
+Remote Linux/macOS release builds and GitHub publishing are described in
+[docs/REMOTE_RELEASES.md](docs/REMOTE_RELEASES.md).
+
 ## Documentation
 
 - [CHANGELOG.md](CHANGELOG.md)
@@ -111,12 +108,13 @@ task check                          # everything CI runs
 - [docs/PROJECT-CONFIG.md](docs/PROJECT-CONFIG.md)
 - [docs/SPRITES.md](docs/SPRITES.md)
 - [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)
+- [docs/REMOTE_RELEASES.md](docs/REMOTE_RELEASES.md)
 - [docs/ROADMAP-EXTENSIONS.md](docs/ROADMAP-EXTENSIONS.md) (extensions are
   planned after 1.0 and are not part of it)
 
 ## License
 
-exBASIC Studio is MIT-licensed (see [LICENSE](LICENSE)).
+exBASIC Studio uses the custom Flesh and Bone License (see [LICENSE](LICENSE)).
 
 The exBASIC compiler, the Atari800 emulator core with its helper, and
 mkatr-go are GPL programs. They are built from the sources in

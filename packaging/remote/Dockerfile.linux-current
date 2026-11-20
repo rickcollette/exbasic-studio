@@ -1,0 +1,22 @@
+FROM golang:1.26-bookworm AS go
+FROM node:22-bookworm AS node
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin \
+    GOBIN=/usr/local/bin \
+    APPIMAGE_EXTRACT_AND_RUN=1
+
+COPY --from=go /usr/local/go /usr/local/go
+COPY --from=node /usr/local/ /usr/local/
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash binutils build-essential ca-certificates curl desktop-file-utils file \
+    git libfuse2t64 libgtk-4-dev libwebkitgtk-6.0-dev make patchelf pkg-config \
+    python3 rpm wget xz-utils \
+    && rm -rf /var/lib/apt/lists/* \
+    && go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0 \
+    && go install github.com/go-task/task/v3/cmd/task@v3.40.1
+
+WORKDIR /workspace
+ENTRYPOINT ["bash", "packaging/remote/linux-container-build.sh", "current"]

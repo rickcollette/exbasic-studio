@@ -8,7 +8,6 @@ export {
 
 export type {
     BuildRequest,
-    ClaudeStatus,
     DebugRequest,
     DebugSession,
     DebugSnapshot,

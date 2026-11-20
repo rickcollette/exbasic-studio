@@ -23,7 +23,7 @@ export type CommandID =
   | 'build' | 'run' | 'build.cancel' | 'debug.start' | 'debug.continue' | 'debug.pause' | 'debug.stepLine' | 'debug.stepInstruction'
   | 'debug.stepOver' | 'debug.stepOut' | 'debug.stop' | 'debug.toggleBreakpoint'
   | 'emulator.open' | 'emulator.start' | 'emulator.restart' | 'emulator.stop' | 'emulator.joystick'
-  | 'terminal.new' | 'terminal.focus' | 'terminal.kill' | 'claude.open' | 'manual' | 'settings' | 'trust' | 'support.bundle'
+  | 'terminal.new' | 'terminal.focus' | 'terminal.kill' | 'manual' | 'settings' | 'trust' | 'support.bundle'
   | 'view.sprites' | 'sprites.new' | 'sprites.merge' | 'sprites.open' | 'sprites.openText' | 'sprites.generate';
 
 export interface Command { id: CommandID; label: string; shortcut?: string; icon?: string }
@@ -79,7 +79,6 @@ export const commands: Command[] = [
   { id: 'terminal.new', label: 'Terminal: New Terminal', shortcut: 'Ctrl+Shift+`', icon: 'terminal' },
   { id: 'terminal.focus', label: 'Terminal: Focus Terminal', shortcut: 'Ctrl+`', icon: 'terminal' },
   { id: 'terminal.kill', label: 'Terminal: Kill Active Terminal', icon: 'trash' },
-  { id: 'claude.open', label: 'Claude Code: Open in Terminal', icon: 'sparkle' },
   { id: 'view.sprites', label: 'View: Show Sprite Studio', icon: 'paintcan' },
   { id: 'sprites.new', label: 'Sprites: New Sprite Sheet…', icon: 'new-file' },
   { id: 'sprites.merge', label: 'Sprites: Merge Sprite Sheets…', icon: 'merge' },
@@ -100,7 +99,7 @@ export const menus: Record<string, CommandID[]> = {
   Go: ['nav.back', 'nav.forward', 'quickOpen', 'symbols', 'editor.definition'],
   Run: ['debug.start', 'run', 'build', 'build.cancel', 'debug.stop', 'debug.toggleBreakpoint', 'emulator.open', 'emulator.start', 'emulator.restart', 'emulator.stop', 'emulator.joystick'],
   Sprites: ['sprites.new', 'sprites.open', 'sprites.openText', 'sprites.generate', 'sprites.merge'],
-  Terminal: ['terminal.new', 'terminal.focus', 'terminal.kill', 'claude.open'],
+  Terminal: ['terminal.new', 'terminal.focus', 'terminal.kill'],
   Help: ['manual', 'settings', 'trust', 'support.bundle'],
 };
 
@@ -554,7 +553,7 @@ export class Workbench {
       case 'debug.toggleBreakpoint': return textTab && /\.bas$/i.test(this.editors.active);
       case 'emulator.start': return !this.emulator.running;
       case 'emulator.restart': case 'emulator.stop': return this.emulator.running;
-      case 'terminal.new': case 'terminal.focus': case 'claude.open': return project;
+      case 'terminal.new': case 'terminal.focus': return project;
       case 'terminal.kill': return !!this.terminal.activeId;
       case 'sprites.new': case 'sprites.merge': return project;
       case 'sprites.open': return project && !!this.spriteCandidate;
@@ -632,14 +631,6 @@ export class Workbench {
         this.focusTerminal();
         return;
       case 'terminal.kill': await this.terminal.close(this.terminal.activeId); return;
-      case 'claude.open': {
-        // Claude Code is a full-screen terminal program: give it room.
-        const room = typeof window === 'undefined' ? 420 : Math.floor(window.innerHeight * 0.5);
-        if (this.ui.panelHeight < Math.min(420, room)) this.ui.setPanelHeight(Math.min(420, room));
-        this.ui.showPanel('terminal');
-        if (await this.terminal.openClaude()) this.focusTerminal();
-        return;
-      }
       case 'manual': this.ui.showActivity('manual'); return;
       case 'settings': this.ui.showActivity('settings'); return;
       case 'trust':
