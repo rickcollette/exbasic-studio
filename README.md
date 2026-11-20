@@ -4,6 +4,11 @@ A desktop IDE for [exBASIC](third_party/exbasic/source/README.md) on Atari
 8-bit computers: edit, build, run and debug in one window, with the
 compiler, an Atari800-based emulator and ATR disk tools included.
 
+## NOTE ON CONTRIBUTORS
+
+Claude is noted as a contributor. I have tried using claude as a way of managing multiple github repos, and it has propen to be more of a PITA than just runnning my deployment scripts. So I am switching back to doing that.  
+
+
 <img src="eXBASIC-logo-icon.png" alt="exBASIC Studio logo" width="96" />
 
 ## Features
