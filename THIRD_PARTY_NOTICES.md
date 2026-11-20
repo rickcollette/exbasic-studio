@@ -13,7 +13,7 @@ license, and the complete license text is installed beside the tools in
 | exBASIC compiler, with the CC65 assembler/linker/archiver (`ca65`, `ld65`, `ar65`) and `mkatr`/`lsatr` | 1.0.0 + Studio patch | GPL-2.0-or-later, with the FastBasic runtime exception | `third_party/exbasic/source` | `tools/exbasic/` |
 | ex800 emulator core (`libatari800`) and the `ex800-studio` helper that links it | 1.0.0 | GPL-2.0-or-later | `third_party/ex800/ex800-1.0.0`, `third_party/ex800/studio-helper` | `tools/ex800-studio` |
 | mkatr-go (Go port of dmsc/mkatr, with EOSFS support) | `2d1f341c` | GPL-2.0-only | `third_party/mkatrgo`, `cmd/mkatr-go` | `tools/mkatr-go` |
-| ExtendedOS source and EOS cartridge image | `983a8b0e` | MIT; see the vendored license | `third_party/exoperatingsystem`, `third_party/EOS.car` | `tools/EOS.car` |
+| ExtendedOS source and source-built EOS cartridge image | `983a8b0e` | MIT; see the vendored license | `third_party/exoperatingsystem` | `tools/EOS.car` |
 
 ex800 is based on Atari800 7.2.1, removes Atari 5200 support, adds a 256K
 Rambo memory configuration (implemented with Altirra 4.40, GPL-2.0, as the
@@ -26,6 +26,10 @@ in this repository at the tag of the release you are using; the release
 build uses exactly those trees (`build/tools/build-toolchain.sh`).
 The exact upstream commits and local portability adjustments are recorded in
 `third_party/VENDORED.md`.
+
+The release build uses the vendored MADS 2.1.7 assembler in
+`third_party/mads` to produce `EOS.car` from the ExtendedOS source. MADS is an
+MIT-licensed build-time tool and is not shipped in the application packages.
 
 ## Libraries compiled into exBASIC Studio
 

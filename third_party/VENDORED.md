@@ -10,6 +10,7 @@ local-adjustment notes current.
 | `mkatrgo` | <https://github.com/rickcollette/mkatrgo> | `2d1f341cb461e683233cbaf348a1fe1409c544fb` |
 | `exoperatingsystem` | <https://github.com/rickcollette/exoperatingsystem> | `983a8b0e91eb6c8575f47c066bfe8719b344f4d2` |
 | `ex800` | <https://github.com/rickcollette/ex800> | `5d821b57a80467a720ed8eede5867e8f18a63ddd` |
+| `mads` | <https://github.com/tebe6502/Mad-Assembler> | `61d5d65f42eb55d984a06bf38b03d9fc17ba1154` (MADS 2.1.7, upstream tag `2.1.6`) |
 
 The exBASIC commit is the upstream reference revision. `exbasic/source`
 carries the Studio compiler metadata patch described in `exbasic/NOTICE.md`
@@ -25,3 +26,8 @@ The ExtendedOS snapshot renames three Windows-reserved source filenames:
 `CON.asm`, `CON.MAN`, and `man/CON.txt` have a trailing underscore before the
 extension. Its Makefile and documentation tools map those names back to `CON`
 in Atari build artifacts. No source content was changed by the rename.
+
+The MADS snapshot contains its MIT license, assembler source, and the official
+2.1.7 host binaries for Windows x86-64, Linux x86-64, macOS x86-64, and macOS
+ARM64. MADS is used only at build time to assemble `exoperatingsystem`; it is
+not included in application packages.

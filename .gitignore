@@ -1,5 +1,7 @@
 .task/
 bin/
+!third_party/mads/bin/
+!third_party/mads/bin/**
 frontend/node_modules/
 frontend/dist/
 !frontend/dist/.keep

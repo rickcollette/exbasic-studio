@@ -14,6 +14,9 @@ All changes to exBASIC Studio are here. The format follows
   core and `ex800-studio` helper. Existing Atari800 project-setting names
   remain compatibility aliases. Atari 5200 profiles are no longer available,
   matching ex800's supported machines.
+- The EOS cartridge is now assembled during the toolchain build from the
+  vendored ExtendedOS source with vendored MADS 2.1.7, instead of copying a
+  checked-in `EOS.car` image.
 
 ### Added
 

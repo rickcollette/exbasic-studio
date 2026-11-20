@@ -21,7 +21,7 @@ includes:
 
 tasks:
   toolchain:
-    desc: Build exBASIC, ex800, ex800-studio and mkatr-go from pinned sources and stage them
+    desc: Build exBASIC, ex800, ex800-studio, mkatr-go and EOS from pinned sources and stage them
     sources:
       - third_party/exbasic/source/src/**/*
       - third_party/exbasic/source/Makefile
@@ -31,8 +31,12 @@ tasks:
       - third_party/mkatrgo/**/*.go
       - third_party/mkatrgo/go.mod
       - third_party/mkatrgo/go.sum
+      - third_party/exoperatingsystem/eos/**/*
+      - third_party/exoperatingsystem/tools/*.py
+      - third_party/exoperatingsystem/Makefile
+      - third_party/exoperatingsystem/VERSION
       - third_party/exoperatingsystem/LICENSE
-      - third_party/EOS.car
+      - third_party/mads/bin/**/*
       - cmd/mkatr-go/**/*.go
       - build/tools/build-toolchain.sh
     generates:

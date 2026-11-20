@@ -7,14 +7,16 @@
 #   ex800-studio helper             third_party/ex800/studio-helper
 #   mkatr-go                        cmd/mkatr-go, third_party/mkatrgo
 #   ExtendedOS source/license       third_party/exoperatingsystem (MIT)
-#   EOS cartridge                   third_party/EOS.car
+#   MADS assembler                  third_party/mads (MIT, build-time only)
+#   EOS cartridge                   built from third_party/exoperatingsystem
 #
 # Output: build/stage/<os>-<arch>/tools, with each tool's license beside it.
 # Intermediate files go to build/toolchain/<os>-<arch>; nothing is written
-# into the vendored source trees except exBASIC's own (ignored) build/ folder.
+# into the vendored source trees except the ignored exBASIC and ExtendedOS
+# build/ folders.
 #
-# Requirements: bash, make, a C and C++ compiler, and Go. On Windows run it
-# from Git Bash with MinGW-w64 (gcc, g++, make) on PATH.
+# Requirements: bash, make, Python 3, a C and C++ compiler, and Go. On Windows
+# run it from Git Bash with MinGW-w64 (gcc, g++, make) on PATH.
 #
 # Usage: build/tools/build-toolchain.sh [--clean]
 set -euo pipefail
@@ -35,10 +37,35 @@ WORK="build/toolchain/$PLATFORM"
 STAGE="build/stage/$PLATFORM/tools"
 EX800_SRC="third_party/ex800/ex800-1.0.0"
 EXBASIC_SRC="third_party/exbasic/source"
+EOS_SRC="third_party/exoperatingsystem"
+
+HOST_KERNEL="$(uname -s)"
+HOST_MACHINE="$(uname -m)"
+case "$HOST_KERNEL-$HOST_MACHINE" in
+	MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) MADS_REL="bin/windows_x86_64/mads.exe" ;;
+	Linux-x86_64) MADS_REL="bin/linux_x86_64/mads" ;;
+	Darwin-x86_64) MADS_REL="bin/macos_x86_64/mads" ;;
+	Darwin-arm64) MADS_REL="bin/macos_aarch64/mads" ;;
+	*)
+		echo "unsupported MADS build host: $HOST_KERNEL-$HOST_MACHINE" >&2
+		exit 1
+		;;
+esac
+MADS="$ROOT/third_party/mads/$MADS_REL"
+test -f "$MADS" || { echo "missing vendored MADS assembler: $MADS" >&2; exit 1; }
+if [[ "$HOST_KERNEL" != MINGW* && "$HOST_KERNEL" != MSYS* && "$HOST_KERNEL" != CYGWIN* ]]; then
+	# Windows-created source archives do not preserve Unix execute bits.
+	chmod +x "$MADS"
+fi
+EOS_PYTHON="${PYTHON:-python3}"
+if [[ "$HOST_KERNEL" == MINGW* || "$HOST_KERNEL" == MSYS* || "$HOST_KERNEL" == CYGWIN* ]] && [ -z "${PYTHON:-}" ]; then
+	EOS_PYTHON=python
+fi
 
 if [ "${1:-}" = "--clean" ]; then
 	rm -rf "$WORK" "build/stage/$PLATFORM"
 	make -C "$EXBASIC_SRC" distclean >/dev/null 2>&1 || true
+	make -C "$EOS_SRC" clean >/dev/null 2>&1 || true
 fi
 
 say() { printf '\n== %s\n' "$*"; }
@@ -46,6 +73,11 @@ say() { printf '\n== %s\n' "$*"; }
 # ---- exBASIC -----------------------------------------------------------
 say "exBASIC compiler distribution"
 make -C "$EXBASIC_SRC" -j"$JOBS" all
+
+# ---- ExtendedOS -------------------------------------------------------
+say "ExtendedOS cartridge"
+make -C "$EOS_SRC" build/EOS.car MADS="$MADS" PYTHON="$EOS_PYTHON"
+test -s "$EOS_SRC/build/EOS.car"
 
 # ---- ex800 core --------------------------------------------------------
 say "ex800 core (libatari800, with code-breakpoint support)"
@@ -103,7 +135,7 @@ fi
 	-o "$STAGE/ex800-studio$EXE" $HELPER_LIBS
 
 CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="-w -s" -o "$STAGE/mkatr-go$EXE" ./cmd/mkatr-go
-cp third_party/EOS.car "$STAGE/EOS.car"
+cp "$EOS_SRC/build/EOS.car" "$STAGE/EOS.car"
 
 # Every separately licensed tool ships with its license and notice.
 cp "$EX800_SRC/COPYING" "$STAGE/licenses/ex800-COPYING.txt"

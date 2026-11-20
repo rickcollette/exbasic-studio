@@ -42,14 +42,10 @@ build_arch() {
   echo "== macOS $ARCH =="
   SRC="$WORK/$ARCH/source"
   mkdir -p "$SRC" "$WORK/$ARCH/wrappers"
-  (cd "$ROOT" && tar \
-    --exclude='./bin' \
-    --exclude='./DIST' \
-    --exclude='./build/stage' \
-    --exclude='./build/toolchain' \
-    --exclude='./frontend/dist' \
-    --exclude='./frontend/node_modules' \
-    -cf - .) | (cd "$SRC" && tar -xf -)
+  # remote_build.py has already removed generated outputs from ROOT. Avoid
+  # bsdtar exclusions here: on macOS a pattern such as './bin' also matches
+  # nested directories and would remove the vendored MADS host binaries.
+  (cd "$ROOT" && tar -cf - .) | (cd "$SRC" && tar -xf -)
 
   CLANG_ARCH="$ARCH"
   [ "$ARCH" = amd64 ] && CLANG_ARCH=x86_64
