@@ -71,7 +71,7 @@ func waitFor(timeout time.Duration, tick func(), done func() bool) bool {
 // error describing the first failure.
 func Run(out io.Writer) error {
 	step := func(format string, args ...any) { fmt.Fprintf(out, "ok   "+format+"\n", args...) }
-	fmt.Fprintf(out, "exBASIC Studio %s self-test on %s/%s\n", version.Version, runtime.GOOS, runtime.GOARCH)
+	fmt.Fprintf(out, "exBASIC Studio %s self-test on %s/%s\n", version.Display(), runtime.GOOS, runtime.GOARCH)
 
 	root, ok := tools.Root()
 	if !ok {

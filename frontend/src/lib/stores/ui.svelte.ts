@@ -3,7 +3,7 @@
 // the backend so it survives restarts.
 import { native, errorMessage, type LayoutState } from '../native';
 
-export type Activity = 'explorer' | 'search' | 'atr' | 'source' | 'run' | 'emulator' | 'sprites' | 'manual' | 'settings';
+export type Activity = 'explorer' | 'search' | 'atr' | 'source' | 'run' | 'emulator' | 'sprites' | 'claude' | 'manual' | 'settings';
 export type PanelTab = 'problems' | 'output' | 'terminal' | 'debug' | 'keyboard';
 
 export const activities: { id: Activity; icon: string; label: string }[] = [
@@ -14,6 +14,7 @@ export const activities: { id: Activity; icon: string; label: string }[] = [
   { id: 'run', icon: 'debug-alt', label: 'Run and Debug' },
   { id: 'emulator', icon: 'device-desktop', label: 'ex800 Emulator' },
   { id: 'sprites', icon: 'paintcan', label: 'Sprite Studio' },
+  { id: 'claude', icon: 'robot', label: 'Claude Code' },
   { id: 'manual', icon: 'book', label: 'exBASIC Manual' },
 ];
 

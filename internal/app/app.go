@@ -14,7 +14,7 @@ import (
 
 const (
 	name        = "exBASIC Studio"
-	description = "A desktop IDE for exBASIC on Atari 8-bit systems"
+	description = "An AI-enabled desktop IDE for exBASIC on Atari 8-bit systems"
 )
 
 // Run creates the native application and blocks until it exits.

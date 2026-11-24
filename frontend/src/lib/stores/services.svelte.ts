@@ -371,7 +371,7 @@ export class EmulatorStore {
 
 // ---- Terminal --------------------------------------------------------------
 
-export interface TerminalSession { id: string; title: string; exited: boolean; exitCode: number }
+export interface TerminalSession { id: string; title: string; kind: 'shell' | 'claude'; exited: boolean; exitCode: number }
 
 export class TerminalStore {
   sessions = $state<TerminalSession[]>([]);
@@ -424,9 +424,24 @@ export class TerminalStore {
     if (!info) return null;
     this.counter++;
     const shell = info.shell.replaceAll('\\', '/').split('/').pop()?.replace(/\.exe$/i, '') ?? 'shell';
-    this.sessions = [...this.sessions, { id: info.id, title: `${shell} ${this.counter}`, exited: false, exitCode: 0 }];
+    this.sessions = [...this.sessions, { id: info.id, title: `${shell} ${this.counter}`, kind: 'shell', exited: false, exitCode: 0 }];
     this.activeId = info.id;
     return info.id;
+  }
+
+  async openClaude(cols = 100, rows = 32): Promise<string | null> {
+    if (!this.workspace.project) return null;
+    if (!(await this.workspace.requestTrust('run Claude Code in this folder'))) return null;
+    const info = await this.ui.task<TerminalInfo>('Opening Claude Code', () => native().studio.TerminalOpenClaude(cols, rows), { quiet: true });
+    if (!info) return null;
+    this.counter++;
+    this.sessions = [...this.sessions, { id: info.id, title: `Claude Code ${this.counter}`, kind: 'claude', exited: false, exitCode: 0 }];
+    this.activeId = info.id;
+    return info.id;
+  }
+
+  get activeClaudeId(): string {
+    return this.sessions.find(session => session.kind === 'claude' && !session.exited)?.id ?? '';
   }
 
   input(id: string, data: string): void { void native().studio.TerminalWrite(id, data).catch(() => {}); }

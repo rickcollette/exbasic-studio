@@ -7,6 +7,7 @@ case "$LANE" in compat|current) ;; *) echo "unknown Linux lane: $LANE" >&2; exit
 test -d /out || { echo "/out is not mounted" >&2; exit 2; }
 
 VERSION="$(tr -d '\r\n' < VERSION)"
+BUILD_NUMBER="$(tr -d '\r\n' < BUILD_NUMBER)"
 ARCH="$(go env GOARCH)"
 test "$ARCH" = amd64 || { echo "the remote Linux release lane currently requires amd64" >&2; exit 2; }
 
@@ -102,12 +103,13 @@ install -m 0755 "$APPIMAGE" "/out/$PREFIX.AppImage"
 install -m 0644 "$DEB" "/out/$PREFIX.deb"
 install -m 0644 "$RPM" "/out/$PREFIX.rpm"
 
-python3 - "$VERSION" "$LANE" "$ARCH" "$GUI_ABI" "$GLIBC_RUNTIME" "$GLIBC_REQUIRED" "/out/$PREFIX-build-manifest.json" <<'PY'
+python3 - "$VERSION" "$BUILD_NUMBER" "$LANE" "$ARCH" "$GUI_ABI" "$GLIBC_RUNTIME" "$GLIBC_REQUIRED" "/out/$PREFIX-build-manifest.json" <<'PY'
 import json, platform, sys
-version, lane, arch, gui, runtime, required, output = sys.argv[1:]
+version, build, lane, arch, gui, runtime, required, output = sys.argv[1:]
 document = {
     "schemaVersion": 1,
     "applicationVersion": version,
+    "buildNumber": int(build),
     "platform": "linux",
     "architecture": arch,
     "lane": lane,

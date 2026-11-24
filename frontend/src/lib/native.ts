@@ -46,6 +46,7 @@ export type Diagnostic = compilerModels.Diagnostic;
 export interface RunResult { build: BuildResult; started: boolean; emulator: EmulatorState }
 export type LintResult = studioModels.LintResult;
 export type Environment = studioModels.Environment;
+export type ClaudeCodeInfo = studioModels.ClaudeCodeInfo;
 export type SearchResult = studioModels.SearchResult;
 export type TrustInfo = studioModels.TrustInfo;
 export type GitStatus = gitModels.Status;

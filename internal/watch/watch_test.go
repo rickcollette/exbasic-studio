@@ -46,7 +46,7 @@ func (c *collector) has(path string) bool {
 	return ok
 }
 
-func TestWatcherReportsChangesAndIgnoresGeneratedDirectories(t *testing.T) {
+func TestWatcherReportsChangesInEveryWorkspaceDirectory(t *testing.T) {
 	root := t.TempDir()
 	for _, dir := range []string{"src", "build", ".git", "node_modules"} {
 		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
@@ -92,19 +92,25 @@ func TestWatcherReportsChangesAndIgnoresGeneratedDirectories(t *testing.T) {
 	}
 	c.wait(t, "src/new.bas", "remove")
 
-	for _, ignored := range []string{"build/out.xex", ".git/index", "node_modules/x.js", "src/.exbasic-1.tmp"} {
-		if err = os.WriteFile(filepath.Join(root, filepath.FromSlash(ignored)), []byte("x"), 0o644); err != nil {
+	for _, visible := range []string{"build/out.xex", ".git/index", "node_modules/x.js", "src/user.tmp"} {
+		if err = os.WriteFile(filepath.Join(root, filepath.FromSlash(visible)), []byte("x"), 0o644); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if err = os.WriteFile(filepath.Join(root, "src", ".exbasic-1.tmp"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	if err = os.WriteFile(filepath.Join(root, "sentinel.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	c.wait(t, "sentinel.txt", "create")
-	for _, ignored := range []string{"build/out.xex", ".git/index", "node_modules/x.js", "src/.exbasic-1.tmp", "build"} {
-		if c.has(ignored) {
-			t.Fatalf("ignored path %q was reported", ignored)
+	for _, visible := range []string{"build/out.xex", ".git/index", "node_modules/x.js", "src/user.tmp"} {
+		if !c.has(visible) {
+			t.Fatalf("visible path %q was not reported", visible)
 		}
+	}
+	if c.has("src/.exbasic-1.tmp") {
+		t.Fatal("Studio's transient atomic-write file was reported")
 	}
 }
 
@@ -126,10 +132,10 @@ func TestStopIsIdempotentAndSilencesEvents(t *testing.T) {
 	}
 }
 
-func TestIgnored(t *testing.T) {
-	for name, want := range map[string]bool{"build": true, "node_modules": true, "vendor": true, ".git": true, "src": false, "H": false, "builder": false} {
-		if Ignored(name) != want {
-			t.Errorf("Ignored(%q) = %v", name, !want)
+func TestInternalTemporary(t *testing.T) {
+	for name, want := range map[string]bool{".exbasic-1.tmp": true, "user.tmp": false, ".git": false, "build": false, "node_modules": false} {
+		if internalTemporary(name) != want {
+			t.Errorf("internalTemporary(%q) = %v, want %v", name, !want, want)
 		}
 	}
 }

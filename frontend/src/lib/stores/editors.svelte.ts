@@ -8,9 +8,13 @@ import { scanSymbols } from '../language/symbols';
 import { isExbasicSource } from '../language';
 import type { UIStore } from './ui.svelte';
 import type { WorkspaceStore } from './workspace.svelte';
+import { imageMime, isImagePath, isJsonPath } from '../fileTypes';
 
 export interface Tab {
   path: string;
+  kind: 'text' | 'image';
+  /** Data URL used by image tabs. */
+  image?: string;
   dirty: boolean;
   /** Increments on every document change; lint results carry it back. */
   version: number;
@@ -229,6 +233,7 @@ export class EditorsStore {
 
   async open(path: string, position?: { line: number; column?: number }): Promise<boolean> {
     if (!this.workspace.project) return false;
+    if (isImagePath(path)) return this.openImage(path);
     if (!this.tab(path)) {
       let content: string;
       try {
@@ -240,13 +245,47 @@ export class EditorsStore {
       if (!this.tab(path)) {
         this.states.set(path, this.stateFactory(path, content));
         this.saved.set(path, this.states.get(path)!.doc);
-        this.tabs = [...this.tabs, { path, dirty: false, version: 0, external: null, epoch: 0 }];
+        this.tabs = [...this.tabs, { path, kind: 'text', dirty: false, version: 0, external: null, epoch: 0 }];
         this.scheduleLint(path, 0);
       }
     }
     this.activate(path);
     if (position) this.reveal = { path, line: position.line, column: position.column ?? 1, token: ++this.revealToken };
     return true;
+  }
+
+  /** Opens a browser-supported image without treating it as sprite data. */
+  async openImage(path: string): Promise<boolean> {
+    if (!this.workspace.project) return false;
+    if (!this.tab(path)) {
+      try {
+        const data = await native().studio.ReadBinaryFile(path);
+        this.tabs = [...this.tabs, { path, kind: 'image', image: `data:${imageMime(path)};base64,${data}`, dirty: false, version: 0, external: null, epoch: 0 }];
+      } catch (error) {
+        this.ui.fail(`Opening ${path}`, error);
+        return false;
+      }
+    }
+    this.activate(path);
+    return true;
+  }
+
+  /** Pretty-prints a JSON document and leaves it as an ordinary unsaved edit. */
+  formatJson(path: string): void {
+    const tab = this.tab(path);
+    const state = this.states.get(path);
+    if (!tab || tab.kind !== 'text' || !state || !isJsonPath(path)) return;
+    try {
+      const formatted = JSON.stringify(JSON.parse(state.doc.toString()), null, 2) + '\n';
+      if (formatted === state.doc.toString()) return;
+      const next = this.stateFactory(path, formatted);
+      this.states.set(path, next);
+      this.patch(path, { dirty: !next.doc.eq(this.saved.get(path) ?? Text.empty), version: tab.version + 1, epoch: tab.epoch + 1 });
+      this.scheduleRecovery(path);
+      this.scheduleAutoSave(path);
+    } catch (error) {
+      this.ui.fail(`Formatting ${path}`, error);
+    }
   }
 
   activate(path: string): void {
@@ -340,7 +379,9 @@ export class EditorsStore {
 
   async save(path: string): Promise<boolean> {
     const state = this.states.get(path);
-    if (!state || !this.tab(path)) return false;
+    const tab = this.tab(path);
+    if (tab?.kind === 'image') return true;
+    if (!state || !tab) return false;
     const content = state.doc.toString();
     try {
       await native().studio.SaveFile(path, content);
@@ -436,7 +477,7 @@ export class EditorsStore {
       if (!this.tab(item.path)) {
         this.states.set(item.path, this.stateFactory(item.path, item.content));
         this.saved.set(item.path, exists ? Text.of(onDisk.split(/\r\n|\r|\n/)) : Text.empty);
-        this.tabs = [...this.tabs, { path: item.path, dirty: true, version: 1, external: null, epoch: 0 }];
+        this.tabs = [...this.tabs, { path: item.path, kind: 'text', dirty: true, version: 1, external: null, epoch: 0 }];
       } else {
         this.replace(item.path, item.content, null);
       }
@@ -454,6 +495,14 @@ export class EditorsStore {
     for (const change of changes) {
       const tab = this.tab(change.path);
       if (!tab) continue;
+      if (tab.kind === 'image') {
+        if (change.kind === 'remove') { this.patch(change.path, { external: 'deleted' }); continue; }
+        try {
+          const data = await native().studio.ReadBinaryFile(change.path);
+          this.patch(change.path, { image: `data:${imageMime(change.path)};base64,${data}`, external: null, version: tab.version + 1, epoch: tab.epoch + 1 });
+        } catch { this.patch(change.path, { external: 'deleted' }); }
+        continue;
+      }
       let content: string | null = null;
       try { content = await native().studio.ReadFile(change.path); } catch { content = null; }
       const current = this.tab(change.path);
@@ -481,6 +530,11 @@ export class EditorsStore {
     if (!tab) return;
     if (choice === 'keep') { this.patch(path, { external: null }); return; }
     try {
+      if (tab.kind === 'image') {
+        const data = await native().studio.ReadBinaryFile(path);
+        this.patch(path, { image: `data:${imageMime(path)};base64,${data}`, external: null, version: tab.version + 1, epoch: tab.epoch + 1 });
+        return;
+      }
       const content = await native().studio.ReadFile(path);
       this.replace(path, content, content);
     } catch (error) {
@@ -495,11 +549,17 @@ export class EditorsStore {
     for (const tab of this.tabs) {
       const target = moved(tab.path);
       if (target === tab.path) continue;
-      this.states.set(target, this.states.get(tab.path)!);
-      this.saved.set(target, this.saved.get(tab.path)!);
+      const state = this.states.get(tab.path);
+      const saved = this.saved.get(tab.path);
+      if (state) this.states.set(target, state);
+      if (saved) this.saved.set(target, saved);
       this.states.delete(tab.path); this.saved.delete(tab.path);
     }
-    this.tabs = this.tabs.map(tab => ({ ...tab, path: moved(tab.path) }));
+    this.tabs = this.tabs.map(tab => {
+      const path = moved(tab.path);
+      const image = tab.kind === 'image' && tab.image && path !== tab.path ? tab.image.replace(/^data:[^;]+;/, `data:${imageMime(path)};`) : tab.image;
+      return { ...tab, path, image };
+    });
     this.active = moved(this.active);
     this.history = this.history.map(moved);
     this.problems.renamePath(oldPath, newPath);

@@ -69,6 +69,48 @@ describe('welcome and explorer', () => {
     expect(rows().filter(row => row.tabIndex === 0)).toHaveLength(1);
   });
 
+  it('opens images normally and offers Sprite Studio from the explorer context menu', async () => {
+    await openSample();
+    await mock.studio.SaveBinaryFile('hero.png', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+    await wb.workspace.refresh();
+    const row = screen.getByRole('treeitem', { name: /hero\.png/i });
+    await fireEvent.click(row);
+    await waitFor(() => expect(wb.editors.activeTab?.kind).toBe('image'));
+    expect(screen.getByRole('img', { name: 'hero.png' })).toBeInTheDocument();
+    await fireEvent.contextMenu(row, { clientX: 120, clientY: 120 });
+    const menu = await screen.findByRole('menu', { name: 'Explorer context menu' });
+    expect(within(menu).getByRole('menuitem', { name: /Open in Sprite Studio/ })).toBeInTheDocument();
+    await fireEvent.click(within(menu).getByRole('menuitem', { name: /Copy Relative Path/ }));
+    expect(mock.clipboard.text).toBe('hero.png');
+
+    await fireEvent.contextMenu(row, { clientX: 120, clientY: 120 });
+    const pathMenu = await screen.findByRole('menu', { name: 'Explorer context menu' });
+    await fireEvent.click(within(pathMenu).getByRole('menuitem', { name: 'Copy Path' }));
+    expect(mock.clipboard.text).toBe('/work/sample/hero.png');
+
+    await fireEvent.contextMenu(row, { clientX: 120, clientY: 120 });
+    const downloadMenu = await screen.findByRole('menu', { name: 'Explorer context menu' });
+    mock.dialogQueue.push(['C:\\Downloads\\hero.png']);
+    await fireEvent.click(within(downloadMenu).getByRole('menuitem', { name: 'Download…' }));
+    await waitFor(() => expect(mock.calls.some(call => call.startsWith('ExportProjectFile(hero.png, C:\\Downloads\\hero.png)'))).toBe(true));
+  });
+
+  it('opens Markdown preview beside the live source editor or in the full pane', async () => {
+    await openSample();
+    await fireEvent.click(screen.getByRole('treeitem', { name: /README\.md/i }));
+    await waitFor(() => expect(wb.editors.active).toBe('README.md'));
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Open Preview to the Side' }));
+    expect(await screen.findByRole('heading', { name: 'Sample' })).toBeInTheDocument();
+    expect(document.querySelector('.document-side-source .cm-content')).toBeInTheDocument();
+    expect(document.querySelector('.document-side-preview .document-preview')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Open Preview' }));
+    expect(document.querySelector('.document-side-source')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show Source' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('heading', { name: 'Sample' })).toBeInTheDocument();
+  });
+
   it('lists recent projects and removes one', async () => {
     await openSample();
     await wb.closeFolder();

@@ -91,9 +91,30 @@ func TestViewIncludesEmptyDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"H", "src", "src/screens"}
+	want := []string{".exbasic-studio", ".exbasic-studio/private", "H", "build", "build/output", "src", "src/screens"}
 	if strings.Join(view.Directories, "|") != strings.Join(want, "|") {
 		t.Fatalf("directories = %v, want %v", view.Directories, want)
+	}
+}
+
+func TestExportFile(t *testing.T) {
+	p, err := Create(t.TempDir(), "download")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destination := filepath.Join(t.TempDir(), "main.bas")
+	if err = p.ExportFile("src/main.bas", destination); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(destination)
+	if err != nil || !strings.Contains(string(got), "download") {
+		t.Fatalf("downloaded file = %q, err=%v", got, err)
+	}
+	if err = p.ExportFile("src/main.bas", "relative.bas"); err == nil {
+		t.Fatal("relative download destination accepted")
+	}
+	if err = p.ExportFile("src/main.bas", filepath.Join(p.Root, "src", "main.bas")); err == nil {
+		t.Fatal("original file accepted as its own download destination")
 	}
 }
 

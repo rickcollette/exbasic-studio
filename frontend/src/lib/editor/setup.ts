@@ -10,6 +10,7 @@ import { tags as t } from '@lezer/highlight';
 import { exbasic, isExbasicSource, type LanguageHost } from '../language';
 import type { Diagnostic } from '../native';
 import { quickFixes } from './quickfix';
+import { languageFor } from '../fileTypes';
 
 export const highlightStyle = HighlightStyle.define([
   { tag: t.controlKeyword, color: 'var(--syntax-control)', fontWeight: '600' },
@@ -18,8 +19,14 @@ export const highlightStyle = HighlightStyle.define([
   { tag: t.standard(t.function(t.variableName)), color: 'var(--syntax-function)' },
   { tag: t.variableName, color: 'var(--syntax-variable)' },
   { tag: t.number, color: 'var(--syntax-number)' },
-  { tag: t.string, color: 'var(--syntax-string)' },
-  { tag: t.lineComment, color: 'var(--syntax-comment)', fontStyle: 'italic' },
+  { tag: [t.string, t.regexp], color: 'var(--syntax-string)' },
+  { tag: [t.lineComment, t.blockComment, t.docComment], color: 'var(--syntax-comment)', fontStyle: 'italic' },
+  { tag: [t.bool, t.null], color: 'var(--syntax-keyword)' },
+  { tag: [t.propertyName, t.typeName, t.className], color: 'var(--syntax-function)' },
+  { tag: [t.heading, t.strong], color: 'var(--syntax-control)', fontWeight: '600' },
+  { tag: t.emphasis, fontStyle: 'italic' },
+  { tag: [t.link, t.url], color: 'var(--link)', textDecoration: 'underline' },
+  { tag: t.invalid, color: 'var(--danger)', textDecoration: 'underline wavy' },
   { tag: t.operator, color: 'var(--syntax-operator)' },
   { tag: t.separator, color: 'var(--syntax-operator)' },
 ]);
@@ -269,6 +276,9 @@ export function editorExtensions(path: string, host: LanguageHost, callbacks: Ed
   ];
   if (isBasic) {
     extensions.push(exbasic(host));
+  } else {
+    const language = languageFor(path);
+    if (language) extensions.push(language);
   }
   if (options.readOnly) extensions.push(EditorState.readOnly.of(true));
   return extensions;

@@ -36,12 +36,16 @@ Unicode true
 !endif
 
 ## The build passes the VERSION file as INFO_PRODUCTVERSION_FULL (for example
-## 1.0.0-rc.3). It is what Apps & features shows; wails_tools.nsh writes
+## 1.0.0). It is what Apps & features shows; wails_tools.nsh writes
 ## INFO_PRODUCTVERSION there, so it must be the full version, not its default.
 !ifdef INFO_PRODUCTVERSION_FULL
     !ifndef INFO_PRODUCTVERSION
         !define INFO_PRODUCTVERSION "${INFO_PRODUCTVERSION_FULL}"
     !endif
+!endif
+
+!ifndef INFO_BUILDNUMBER
+    !define INFO_BUILDNUMBER "1"
 !endif
 
 ## Include the wails tools
@@ -50,13 +54,13 @@ Unicode true
 
 # The binary version must be four numbers, so drop any pre-release suffix.
 !searchparse /noerrors "${INFO_PRODUCTVERSION}-" "" INFO_FILEVERSION "-"
-VIProductVersion "${INFO_FILEVERSION}.0"
-VIFileVersion    "${INFO_FILEVERSION}.0"
+VIProductVersion "${INFO_FILEVERSION}.${INFO_BUILDNUMBER}"
+VIFileVersion    "${INFO_FILEVERSION}.${INFO_BUILDNUMBER}"
 
 VIAddVersionKey "CompanyName"     "${INFO_COMPANYNAME}"
 VIAddVersionKey "FileDescription" "${INFO_PRODUCTNAME} Installer"
-VIAddVersionKey "ProductVersion"  "${INFO_PRODUCTVERSION}"
-VIAddVersionKey "FileVersion"     "${INFO_FILEVERSION}"
+VIAddVersionKey "ProductVersion"  "${INFO_PRODUCTVERSION} (build ${INFO_BUILDNUMBER})"
+VIAddVersionKey "FileVersion"     "${INFO_FILEVERSION}.${INFO_BUILDNUMBER}"
 VIAddVersionKey "LegalCopyright"  "${INFO_COPYRIGHT}"
 VIAddVersionKey "ProductName"     "${INFO_PRODUCTNAME}"
 

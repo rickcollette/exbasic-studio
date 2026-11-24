@@ -4,9 +4,12 @@ All changes to exBASIC Studio are here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
+Fix-only releases retain their product version and increment `BUILD_NUMBER`.
+Feature releases increment the minor version and reset `BUILD_NUMBER` to 1.
+
 ## [Unreleased]
 
-## [1.0.0-rc.3]
+## [1.0.0]
 
 ### Changed
 
@@ -20,6 +23,9 @@ All changes to exBASIC Studio are here. The format follows
 
 ### Added
 
+- **Claude Code integration.** Claude runs in an integrated terminal using the
+  user's existing local Claude login; exBASIC Studio does not read or store
+  credentials.
 - **Sprite Studio.** A new activity-bar view and editor for player/missile
   sprites. Draw frames with pencil, eraser, fill, line and rectangle tools,
   with undo, onion skin, a per-plane view and an animation preview. Each
@@ -49,11 +55,6 @@ All changes to exBASIC Studio are here. The format follows
   emulator keys are pressed and released.
 - Windows-origin source snapshots preserve the ex800 Autotools line endings
   and executable permissions required by Linux and macOS release builds.
-
-### Removed
-
-- The external project-assistance integrations and their command, side-bar,
-  terminal and backend plumbing.
 
 ## [1.0.0-rc.2]
 

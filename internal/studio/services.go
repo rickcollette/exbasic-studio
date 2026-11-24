@@ -31,6 +31,23 @@ func (s *StudioService) TerminalOpen(cols, rows int) (terminal.Info, error) {
 	return s.terminals.Open(terminal.Options{Dir: p.Root, Cols: cols, Rows: rows})
 }
 
+// TerminalOpenClaude starts Claude Code interactively in the workspace root.
+// Authentication remains entirely owned by the user's Claude installation.
+func (s *StudioService) TerminalOpenClaude(cols, rows int) (terminal.Info, error) {
+	p, err := s.current()
+	if err != nil {
+		return terminal.Info{}, err
+	}
+	if err = s.requireTrust(p, "run Claude Code in it"); err != nil {
+		return terminal.Info{}, err
+	}
+	status := s.ClaudeCodeStatus()
+	if !status.Available {
+		return terminal.Info{}, errors.New(status.Message)
+	}
+	return s.terminals.Open(terminal.Options{Dir: p.Root, Shell: status.Path, Cols: cols, Rows: rows})
+}
+
 func (s *StudioService) TerminalWrite(id, data string) error { return s.terminals.Write(id, data) }
 
 func (s *StudioService) TerminalResize(id string, cols, rows int) error {
@@ -384,5 +401,5 @@ func (s *StudioService) ExportSupportBundle(path string) error {
 		"emulator":       env.EmulatorHint,
 		"workspaceOpen":  fmt.Sprint(root != ""),
 	}
-	return s.log.ExportBundle(path, version.Version, details, logging.NewRedactor(root, s.state.Dir()))
+	return s.log.ExportBundle(path, version.Display(), details, logging.NewRedactor(root, s.state.Dir()))
 }

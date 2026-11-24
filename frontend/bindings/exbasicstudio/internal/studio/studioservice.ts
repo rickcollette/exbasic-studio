@@ -118,6 +118,13 @@ export function CancelOperation(id: string): $CancellablePromise<boolean> {
 }
 
 /**
+ * ClaudeCodeStatus finds Claude Code on the user's PATH.
+ */
+export function ClaudeCodeStatus(): $CancellablePromise<$models.ClaudeCodeInfo> {
+    return $Call.ByID(2826687879);
+}
+
+/**
  * ClearRecoveryData deletes all crash-recovery copies (from Settings).
  */
 export function ClearRecoveryData(): $CancellablePromise<void> {
@@ -283,6 +290,14 @@ export function EmulatorStatus(): $CancellablePromise<emulator$0.State> {
 
 export function EmulatorStop(): $CancellablePromise<void> {
     return $Call.ByID(1331344905);
+}
+
+/**
+ * ExportProjectFile downloads a workspace file to an absolute path selected
+ * with the native save dialog.
+ */
+export function ExportProjectFile(rel: string, destination: string): $CancellablePromise<void> {
+    return $Call.ByID(4061919067, rel, destination);
 }
 
 /**
@@ -569,6 +584,14 @@ export function TerminalList(): $CancellablePromise<terminal$0.Info[] | null> {
  */
 export function TerminalOpen(cols: number, rows: number): $CancellablePromise<terminal$0.Info> {
     return $Call.ByID(149797834, cols, rows);
+}
+
+/**
+ * TerminalOpenClaude starts Claude Code interactively in the workspace root.
+ * Authentication remains entirely owned by the user's Claude installation.
+ */
+export function TerminalOpenClaude(cols: number, rows: number): $CancellablePromise<terminal$0.Info> {
+    return $Call.ByID(382076312, cols, rows);
 }
 
 export function TerminalResize(id: string, cols: number, rows: number): $CancellablePromise<void> {

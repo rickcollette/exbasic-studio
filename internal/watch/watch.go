@@ -37,17 +37,15 @@ type Batch struct {
 const (
 	settleDelay     = 200 * time.Millisecond
 	maxBatchChanges = 500
-	maxWatchedDirs  = 4000
+	maxWatchedDirs  = 20000
 )
 
-// Ignored reports directories that are never watched or listed: hidden
-// folders, build output and dependency/vendor trees.
-func Ignored(name string) bool {
-	switch name {
-	case "build", "node_modules", "vendor":
-		return true
-	}
-	return strings.HasPrefix(name, ".")
+// internalTemporary reports only Studio's own short-lived atomic-write files.
+// User-created dot files, generated output, dependencies and ordinary .tmp
+// files are all visible and watched.
+func internalTemporary(path string) bool {
+	name := filepath.Base(path)
+	return strings.HasPrefix(name, ".exbasic-") && strings.HasSuffix(name, ".tmp")
 }
 
 // Watcher observes one workspace root.
@@ -73,8 +71,8 @@ func Start(root string, sink func(Batch)) (*Watcher, error) {
 	return w, nil
 }
 
-// addTree watches a directory and its visible descendants. Links are never
-// followed, so a watch cannot leave the workspace.
+// addTree watches a directory and all descendants. Links are never followed,
+// so a watch cannot leave the workspace.
 func (w *Watcher) addTree(dir string) {
 	_ = filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -82,9 +80,6 @@ func (w *Watcher) addTree(dir string) {
 		}
 		if !entry.IsDir() {
 			return nil
-		}
-		if path != w.root && Ignored(entry.Name()) {
-			return filepath.SkipDir
 		}
 		if w.dirs >= maxWatchedDirs {
 			return filepath.SkipAll
@@ -96,18 +91,15 @@ func (w *Watcher) addTree(dir string) {
 	})
 }
 
-// relative converts an event path to a slash-separated workspace path and
-// rejects anything inside an ignored directory.
+// relative converts an event path to a slash-separated workspace path.
 func (w *Watcher) relative(path string) (string, bool) {
 	rel, err := filepath.Rel(w.root, path)
 	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
 		return "", false
 	}
 	rel = filepath.ToSlash(rel)
-	for _, part := range strings.Split(rel, "/") {
-		if Ignored(part) || strings.HasSuffix(part, ".tmp") {
-			return "", false
-		}
+	if internalTemporary(rel) {
+		return "", false
 	}
 	return rel, true
 }

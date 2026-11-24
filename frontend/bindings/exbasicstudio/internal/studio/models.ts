@@ -19,6 +19,17 @@ export interface BuildRequest {
 }
 
 /**
+ * ClaudeCodeInfo describes the locally installed Claude Code CLI. exBASIC
+ * Studio uses the user's existing Claude login and never stores API keys or
+ * credentials itself.
+ */
+export interface ClaudeCodeInfo {
+    "available": boolean;
+    "path": string;
+    "message": string;
+}
+
+/**
  * DebugRequest starts a source-level debugging session for the last build.
  */
 export interface DebugRequest {

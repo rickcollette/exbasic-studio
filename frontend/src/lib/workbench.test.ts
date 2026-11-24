@@ -83,6 +83,23 @@ describe('project lifecycle', () => {
     expect(wb.ui.output).toContain('cannot find the path');
   });
 
+  it('opens images in the normal image viewer and formats JSON text', async () => {
+    await createProject();
+    await mock.studio.SaveBinaryFile('art/hero.png', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+    await wb.workspace.refresh();
+    expect(await wb.openFile('art/hero.png')).toBe(true);
+    expect(wb.editors.activeTab).toMatchObject({ path: 'art/hero.png', kind: 'image', dirty: false });
+    expect(wb.editors.activeTab?.image).toMatch(/^data:image\/png;base64,/);
+    expect(wb.sprites.active).toBeUndefined();
+
+    await wb.workspace.createFile('data.json', '{"answer":42,"items":[1,2]}');
+    await wb.openFile('data.json');
+    wb.editors.formatJson('data.json');
+    expect(wb.editors.text('data.json')).toBe('{\n  "answer": 42,\n  "items": [\n    1,\n    2\n  ]\n}\n');
+    expect(wb.editors.activeTab?.dirty).toBe(true);
+    vi.clearAllTimers();
+  });
+
   it('restores tabs, breakpoints and watches when a folder is reopened', async () => {
     await createProject();
     await wb.workspace.createFile('src/extra.bas', 'PRINT 2\n');
@@ -289,7 +306,7 @@ describe('external changes and recovery', () => {
     expect(mock.calls.slice(calls).some(call => call.startsWith('GetProject'))).toBe(false);
     mock.emit('workspace-changed', { root: '/home/tester/demo', overflow: false, changes: [{ path: 'build/out.xex', kind: 'create', directory: false, size: 3 }, { path: 'assets', kind: 'create', directory: true, size: 0 }] });
     await settle();
-    expect(wb.workspace.hasFile('build/out.xex')).toBe(false);
+    expect(wb.workspace.hasFile('build/out.xex')).toBe(true);
     expect(wb.workspace.hasDirectory('assets')).toBe(true);
     mock.emit('workspace-changed', { root: '/other/root', overflow: false, changes: [{ path: 'x.bas', kind: 'create', directory: false, size: 1 }] });
     await settle();
@@ -524,6 +541,17 @@ describe('terminal', () => {
     await wb.terminal.close(id);
     expect(wb.terminal.sessions).toEqual([]);
     expect(mock.calls.some(call => call.startsWith('TerminalClose'))).toBe(true);
+  });
+
+  it('opens Claude Code as a named integrated terminal session', async () => {
+    await wb.execute('claude.open');
+    await settle();
+    expect(wb.ui.activity).toBe('claude');
+    expect(wb.ui.panelTab).toBe('terminal');
+    expect(wb.terminal.sessions).toHaveLength(1);
+    expect(wb.terminal.sessions[0]).toMatchObject({ kind: 'claude', title: 'Claude Code 1', exited: false });
+    expect(wb.terminal.activeClaudeId).toBe(wb.terminal.sessions[0].id);
+    expect(mock.calls.some(call => call.startsWith('TerminalOpenClaude'))).toBe(true);
   });
 
   it('is unavailable in restricted mode until the folder is trusted', async () => {

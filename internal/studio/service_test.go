@@ -488,6 +488,18 @@ func TestTerminalSessionThroughTheService(t *testing.T) {
 	}
 }
 
+func TestClaudeCodeStatusReportsMissingCLI(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	s, _ := newService(t)
+	status := s.ClaudeCodeStatus()
+	if status.Available || status.Path != "" {
+		t.Fatalf("expected unavailable Claude Code status, got %+v", status)
+	}
+	if !strings.Contains(status.Message, "not found") {
+		t.Fatalf("expected a useful not-found message, got %q", status.Message)
+	}
+}
+
 func TestSupportBundleRedactsWorkspacePath(t *testing.T) {
 	s, _ := newService(t)
 	view, err := s.CreateProject(t.TempDir(), "bundleproject")

@@ -255,6 +255,11 @@ export function createMockNative(): MockNative {
       atob(data);
       files().set(rel, BINARY_MARKER + data);
     },
+    ExportProjectFile: (rel: string, destination: string) => {
+      requireProject(); checkRel(rel);
+      if (!files().has(rel)) throw new Error(`open ${rel}: The system cannot find the file specified.`);
+      if (!/^(?:[a-zA-Z]:[\\/]|\/)/.test(destination)) throw new Error('download destination must be an absolute path');
+    },
     CreateFolder: (rel: string) => { requireProject(); checkRel(rel); files().set(`${rel}/.keep`, ''); return view(); },
     ImportProjectPaths: (destination: string, paths: string[]) => {
       requireProject();
@@ -329,6 +334,14 @@ export function createMockNative(): MockNative {
       terminals.set(id, { seq: 0, line: '' });
       later(() => emit('terminal', { id, seq: ++terminals.get(id)!.seq, type: 'output', data: `mock-shell ${root}> `, exitCode: 0 }));
       return { id, shell: '/bin/mock-shell', dir: root, cols, rows };
+    },
+    ClaudeCodeStatus: () => ({ available: true, path: '/bin/mock-claude', message: 'Claude Code is ready.' }),
+    TerminalOpenClaude: (cols: number, rows: number) => {
+      requireTrust('run Claude Code in it');
+      const id = `term-${++terminalCounter}`;
+      terminals.set(id, { seq: 0, line: '' });
+      later(() => emit('terminal', { id, seq: ++terminals.get(id)!.seq, type: 'output', data: `Claude Code (mock)\r\n${root}> `, exitCode: 0 }));
+      return { id, shell: '/bin/mock-claude', dir: root, cols, rows };
     },
     TerminalWrite: (id: string, data: string) => {
       const session = terminals.get(id);

@@ -16,14 +16,16 @@ export function fileIcon(path: string): string {
   if (lower.endsWith('.asm') || lower.endsWith('.s')) return 'symbol-namespace';
   if (lower.endsWith('.sprites.json')) return 'paintcan';
   if (lower.endsWith('.pmg')) return 'symbol-color';
-  if (lower.endsWith('.png')) return 'file-media';
+  if (/\.(png|jpe?g|gif|webp|bmp|svg|ico|avif)$/.test(lower)) return 'file-media';
   if (lower.endsWith('.json')) return 'json';
-  if (lower.endsWith('.md')) return 'markdown';
+  if (/\.(md|markdown|mdown|mkd)$/.test(lower)) return 'markdown';
+  if (/\.(mmd|mermaid)$/.test(lower)) return 'type-hierarchy-sub';
+  if (/\.(js|mjs|cjs|jsx|ts|tsx)$/.test(lower)) return 'symbol-key';
+  if (/\.(html?|css|scss|less|xml|ya?ml)$/.test(lower)) return 'code';
+  if (/\.(txt|log|ini|cfg|conf|toml|env)$/.test(lower)) return 'file-text';
   if (lower.endsWith('.atr')) return 'atari-folder';
   return 'file';
 }
-
-const ignoredDirectory = (name: string) => name.startsWith('.') || name === 'build' || name === 'node_modules' || name === 'vendor';
 
 export class WorkspaceStore {
   env = $state<Environment | null>(null);
@@ -66,7 +68,11 @@ export class WorkspaceStore {
 
   private async adopt(view: ProjectView): Promise<void> {
     this.project = view;
-    this.collapsed = new Set();
+    // Keep large dependency and dot trees cheap to render while still showing
+    // every top-level entry. Revealing the active file expands only its path.
+    const collapsed = new Set(view.directories ?? []);
+    for (let current = parentOf(view.config.entry); current; current = parentOf(current)) collapsed.delete(current);
+    this.collapsed = collapsed;
     this.selected = '';
     const snapshot = await native().studio.AppState();
     this.recents = snapshot.recentProjects ?? [];
@@ -205,6 +211,18 @@ export class WorkspaceStore {
     this.collapsed = next;
   }
 
+  collapseAll(): void {
+    this.collapsed = new Set(this.project?.directories ?? []);
+  }
+
+  /** Makes a path visible without disturbing the expansion state of unrelated folders. */
+  reveal(path: string): void {
+    const next = new Set(this.collapsed);
+    for (let current = parentOf(path); current; current = parentOf(current)) next.delete(current);
+    this.collapsed = next;
+    this.selected = path;
+  }
+
   hasFile(path: string): boolean {
     const lower = path.toLowerCase();
     return !!this.project?.files?.some(file => file.path.toLowerCase() === lower);
@@ -226,7 +244,6 @@ export class WorkspaceStore {
     let directories = project.directories ?? [];
     let changed = false;
     for (const change of batch.changes) {
-      if (change.path.split('/').some(ignoredDirectory)) continue;
       if (change.kind === 'remove') {
         const prefix = change.path + '/';
         const keptFiles = files.filter(file => file.path !== change.path && !file.path.startsWith(prefix));
@@ -287,5 +304,13 @@ export class WorkspaceStore {
     if (!this.project || !paths.length) return;
     const view = await this.ui.task('Importing into project', () => native().studio.ImportProjectPaths(destination || '.', paths));
     if (view) this.project = view;
+  }
+
+  async download(path: string, destination: string): Promise<boolean> {
+    const ok = await this.ui.task('Downloading file', async () => {
+      await native().studio.ExportProjectFile(path, destination);
+      return true;
+    });
+    return !!ok;
   }
 }

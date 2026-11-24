@@ -11,7 +11,7 @@ import { OperationsStore } from './stores/operations.svelte';
 import { AtrStore, EmulatorStore, GitStore, ManualStore, TerminalStore } from './stores/services.svelte';
 import { DebugStore } from './stores/debug.svelte';
 import { SpritesStore } from './stores/sprites.svelte';
-import { isSpritePath } from './sprites/model';
+import { isPmgPath, isSheetPath, isSpritePath } from './sprites/model';
 import { editorExtensions, type EditorCallbacks } from './editor/setup';
 import { scanSymbols, findDefinition, wordAt, includeAt, isExbasicSource, type DocSymbol, type LanguageHost } from './language';
 
@@ -19,11 +19,11 @@ export type CommandID =
   | 'palette' | 'quickOpen' | 'symbols' | 'file.open' | 'file.close' | 'file.new' | 'file.newFolder' | 'file.rename' | 'file.delete'
   | 'file.save' | 'file.saveAll' | 'editor.close' | 'editor.undo' | 'editor.redo' | 'editor.split' | 'editor.copyPath'
   | 'editor.selectAll' | 'editor.find' | 'editor.definition' | 'nav.back' | 'nav.forward'
-  | 'view.explorer' | 'view.atr' | 'view.search' | 'view.source' | 'view.run' | 'view.panel' | 'view.problems' | 'view.output' | 'view.keyboard' | 'view.sidebar'
+  | 'view.explorer' | 'view.atr' | 'view.search' | 'view.source' | 'view.run' | 'view.claude' | 'view.panel' | 'view.problems' | 'view.output' | 'view.keyboard' | 'view.sidebar'
   | 'build' | 'run' | 'build.cancel' | 'debug.start' | 'debug.continue' | 'debug.pause' | 'debug.stepLine' | 'debug.stepInstruction'
   | 'debug.stepOver' | 'debug.stepOut' | 'debug.stop' | 'debug.toggleBreakpoint'
   | 'emulator.open' | 'emulator.start' | 'emulator.restart' | 'emulator.stop' | 'emulator.joystick'
-  | 'terminal.new' | 'terminal.focus' | 'terminal.kill' | 'manual' | 'settings' | 'trust' | 'support.bundle'
+  | 'terminal.new' | 'terminal.focus' | 'terminal.kill' | 'claude.open' | 'claude.focus' | 'manual' | 'settings' | 'trust' | 'support.bundle'
   | 'view.sprites' | 'sprites.new' | 'sprites.merge' | 'sprites.open' | 'sprites.openText' | 'sprites.generate';
 
 export interface Command { id: CommandID; label: string; shortcut?: string; icon?: string }
@@ -54,6 +54,7 @@ export const commands: Command[] = [
   { id: 'view.atr', label: 'View: Show ATR Explorer', icon: 'atari-folder' },
   { id: 'view.source', label: 'View: Show Source Control', shortcut: 'Ctrl+Shift+G', icon: 'source-control' },
   { id: 'view.run', label: 'View: Show Run and Debug', shortcut: 'Ctrl+Shift+D', icon: 'debug-alt' },
+  { id: 'view.claude', label: 'View: Show Claude Code', icon: 'robot' },
   { id: 'view.sidebar', label: 'View: Toggle Side Bar', shortcut: 'Ctrl+B', icon: 'layout-sidebar-left' },
   { id: 'view.panel', label: 'View: Toggle Panel', shortcut: 'Ctrl+J', icon: 'layout-panel' },
   { id: 'view.problems', label: 'View: Show Problems', shortcut: 'Ctrl+Shift+M', icon: 'error' },
@@ -79,6 +80,8 @@ export const commands: Command[] = [
   { id: 'terminal.new', label: 'Terminal: New Terminal', shortcut: 'Ctrl+Shift+`', icon: 'terminal' },
   { id: 'terminal.focus', label: 'Terminal: Focus Terminal', shortcut: 'Ctrl+`', icon: 'terminal' },
   { id: 'terminal.kill', label: 'Terminal: Kill Active Terminal', icon: 'trash' },
+  { id: 'claude.open', label: 'Claude Code: New Session', icon: 'robot' },
+  { id: 'claude.focus', label: 'Claude Code: Focus Session', icon: 'terminal' },
   { id: 'view.sprites', label: 'View: Show Sprite Studio', icon: 'paintcan' },
   { id: 'sprites.new', label: 'Sprites: New Sprite Sheet…', icon: 'new-file' },
   { id: 'sprites.merge', label: 'Sprites: Merge Sprite Sheets…', icon: 'merge' },
@@ -95,11 +98,11 @@ export const commands: Command[] = [
 export const menus: Record<string, CommandID[]> = {
   File: ['file.new', 'file.newFolder', 'file.open', 'file.close', 'file.save', 'file.saveAll', 'editor.close'],
   Edit: ['editor.undo', 'editor.redo', 'editor.find', 'editor.selectAll', 'palette'],
-  View: ['view.explorer', 'view.search', 'view.atr', 'view.source', 'view.run', 'view.sprites', 'view.sidebar', 'view.panel', 'view.problems', 'view.output', 'view.keyboard', 'editor.split'],
+  View: ['view.explorer', 'view.search', 'view.atr', 'view.source', 'view.run', 'view.sprites', 'view.claude', 'view.sidebar', 'view.panel', 'view.problems', 'view.output', 'view.keyboard', 'editor.split'],
   Go: ['nav.back', 'nav.forward', 'quickOpen', 'symbols', 'editor.definition'],
   Run: ['debug.start', 'run', 'build', 'build.cancel', 'debug.stop', 'debug.toggleBreakpoint', 'emulator.open', 'emulator.start', 'emulator.restart', 'emulator.stop', 'emulator.joystick'],
   Sprites: ['sprites.new', 'sprites.open', 'sprites.openText', 'sprites.generate', 'sprites.merge'],
-  Terminal: ['terminal.new', 'terminal.focus', 'terminal.kill'],
+  Terminal: ['terminal.new', 'terminal.focus', 'terminal.kill', 'claude.open', 'claude.focus'],
   Help: ['manual', 'settings', 'trust', 'support.bundle'],
 };
 
@@ -283,9 +286,9 @@ export class Workbench {
     await this.workspace.close();
   }
 
-  /** Opens a file in the editor that suits it: sprite files go to the Sprite Studio. */
+  /** Opens a file in its default editor. Images use the normal viewer; sprite-specific formats use Sprite Studio. */
   async openFile(path: string): Promise<boolean> {
-    if (isSpritePath(path)) return this.sprites.open(path);
+    if (isSheetPath(path) || isPmgPath(path)) return this.sprites.open(path);
     return this.editors.open(path);
   }
 
@@ -444,11 +447,11 @@ export class Workbench {
 
   // ---- Explorer actions -----------------------------------------------------
 
-  beginCreate(kind: 'file' | 'folder'): void {
+  beginCreate(kind: 'file' | 'folder', inDirectory?: string): void {
     if (!this.workspace.project) return;
     this.ui.showActivity('explorer');
     const selected = this.workspace.selected;
-    const directory = selected && this.workspace.hasDirectory(selected) ? selected : parentOf(selected) || (this.workspace.hasDirectory('src') ? 'src' : '');
+    const directory = inDirectory !== undefined ? inDirectory : selected && this.workspace.hasDirectory(selected) ? selected : parentOf(selected) || (this.workspace.hasDirectory('src') ? 'src' : '');
     this.creating = { kind, value: `${directory ? directory + '/' : ''}${kind === 'file' ? 'new.bas' : 'new-folder'}` };
   }
 
@@ -530,7 +533,8 @@ export class Workbench {
 
   commandEnabled(id: CommandID): boolean {
     const project = !!this.workspace.project;
-    const textTab = !!this.editors.activeTab;
+    const textTab = this.editors.activeTab?.kind === 'text';
+    const fileTab = !!this.editors.activeTab;
     const sprite = this.sprites.active;
     const building = this.operations.isRunning('build');
     switch (id) {
@@ -539,7 +543,8 @@ export class Workbench {
       case 'file.save': return textTab || !!sprite;
       case 'editor.undo': return textTab || !!sprite?.history.undo;
       case 'editor.redo': return textTab || !!sprite?.history.redo;
-      case 'editor.split': case 'editor.copyPath': case 'editor.selectAll': case 'editor.find': case 'editor.definition': return textTab;
+      case 'editor.copyPath': return fileTab;
+      case 'editor.split': case 'editor.selectAll': case 'editor.find': case 'editor.definition': return textTab;
       case 'file.saveAll': return this.editors.dirtyTabs.length > 0 || this.sprites.host.dirty().length > 0;
       case 'editor.close': return this.editors.active !== '';
       case 'nav.back': return this.editors.historyState.back;
@@ -553,8 +558,9 @@ export class Workbench {
       case 'debug.toggleBreakpoint': return textTab && /\.bas$/i.test(this.editors.active);
       case 'emulator.start': return !this.emulator.running;
       case 'emulator.restart': case 'emulator.stop': return this.emulator.running;
-      case 'terminal.new': case 'terminal.focus': return project;
+      case 'terminal.new': case 'terminal.focus': case 'claude.open': return project;
       case 'terminal.kill': return !!this.terminal.activeId;
+      case 'claude.focus': return !!this.terminal.activeClaudeId;
       case 'sprites.new': case 'sprites.merge': return project;
       case 'sprites.open': return project && !!this.spriteCandidate;
       case 'sprites.openText': return !!sprite && !!(sprite.sheetPath ?? sprite.framesPath ?? sprite.bank?.index);
@@ -594,7 +600,7 @@ export class Workbench {
       case 'editor.copyPath': await this.copyActivePath(); return;
       case 'nav.back': await this.editors.navigate(-1); return;
       case 'nav.forward': await this.editors.navigate(1); return;
-      case 'view.explorer': case 'view.atr': case 'view.search': case 'view.source': case 'view.run': {
+      case 'view.explorer': case 'view.atr': case 'view.search': case 'view.source': case 'view.run': case 'view.claude': {
         const activity = id.slice(5) as Activity;
         this.ui.showActivity(activity);
         if (activity === 'source') void this.git.autoRefresh();
@@ -631,6 +637,19 @@ export class Workbench {
         this.focusTerminal();
         return;
       case 'terminal.kill': await this.terminal.close(this.terminal.activeId); return;
+      case 'claude.open':
+        this.ui.showActivity('claude');
+        this.ui.showPanel('terminal');
+        await this.terminal.openClaude();
+        this.focusTerminal();
+        return;
+      case 'claude.focus': {
+        const id = this.terminal.activeClaudeId;
+        if (id) this.terminal.activeId = id;
+        this.ui.showPanel('terminal');
+        this.focusTerminal();
+        return;
+      }
       case 'manual': this.ui.showActivity('manual'); return;
       case 'settings': this.ui.showActivity('settings'); return;
       case 'trust':

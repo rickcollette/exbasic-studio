@@ -224,6 +224,16 @@ func (s *StudioService) SaveBinaryFile(rel, data string) error {
 	return s.withEOSHostMutation([]string{rel}, func() error { return p.SaveBinary(rel, decoded) })
 }
 
+// ExportProjectFile downloads a workspace file to an absolute path selected
+// with the native save dialog.
+func (s *StudioService) ExportProjectFile(rel, destination string) error {
+	p, err := s.current()
+	if err != nil {
+		return err
+	}
+	return p.ExportFile(rel, destination)
+}
+
 func (s *StudioService) CreateFolder(rel string) (project.View, error) {
 	p, err := s.current()
 	if err != nil {

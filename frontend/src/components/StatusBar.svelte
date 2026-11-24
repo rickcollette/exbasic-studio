@@ -1,6 +1,7 @@
 <script lang="ts">
   import { wb } from '../lib/workbench.svelte';
   import { EMULATOR_TAB } from '../lib/stores/editors.svelte';
+  import { fileTypeLabel } from '../lib/fileTypes';
 
   const lineEnding = $derived.by(() => {
     const tab = wb.editors.activeTab;
@@ -27,8 +28,10 @@
     {#if wb.git.networkBusy}<button class="inline" onclick={() => wb.git.cancelNetwork()}>Cancel</button>{/if}
   </div>
   <div class="status-right">
-    {#if wb.editors.activeTab}
+    {#if wb.editors.activeTab?.kind === 'text'}
       <span>Ln {wb.editors.cursor.line}, Col {wb.editors.cursor.column}</span><span>Spaces: 2</span><span>UTF-8</span><span>{lineEnding}</span>
+    {:else if wb.editors.activeTab?.kind === 'image'}
+      <span>{fileTypeLabel(wb.editors.activeTab.path)}</span><span>Read-only</span>
     {:else if wb.editors.active === EMULATOR_TAB}
       <span>Frame {wb.emulator.frame}</span>
     {:else if wb.sprites.active}

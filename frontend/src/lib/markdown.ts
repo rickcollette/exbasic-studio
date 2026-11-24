@@ -20,6 +20,28 @@ export interface RenderedManual { html: string; headings: Heading[] }
 const ALLOWED_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'li', 'pre', 'code', 'em', 'strong', 'del', 'blockquote', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'a', 'br', 'hr', 'mark', 'span', 'kbd', 'sup', 'sub'];
 const ALLOWED_ATTR = ['id', 'href', 'class', 'align', 'data-chapter', 'data-anchor', 'title'];
 
+/** Renders a workspace Markdown file for its editor preview. */
+export function renderDocumentMarkdown(markdown: string): string {
+  const marked = new Marked({ gfm: true, breaks: false });
+  const attribute = (value: string) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  marked.use({ renderer: {
+    // Workspace images are loaded through the bounded native file API by the
+    // preview component. This avoids file:// access and remote tracking pixels.
+    image({ href, text, title }) {
+      const tooltip = title ? ` title="${attribute(title)}"` : '';
+      return `<img data-workspace-image="${attribute(href)}" alt="${attribute(text)}"${tooltip}>`;
+    },
+    html() { return ''; },
+  } });
+  const raw = marked.parse(markdown, { async: false }) as string;
+  return DOMPurify.sanitize(raw, {
+    ALLOWED_TAGS: [...ALLOWED_TAGS, 'img', 'input'],
+    ALLOWED_ATTR: [...ALLOWED_ATTR, 'alt', 'checked', 'disabled', 'type', 'data-workspace-image'],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):[^\s]*|#[^\s]*|\/[^\s]*|\.{1,2}\/[^\s]*|[^:/?#]+(?:\/[^:]*)?)$/i,
+    ALLOW_DATA_ATTR: false,
+  });
+}
+
 /**
  * Renders a chapter. Links to other chapters become buttons-in-disguise:
  * anchors carrying data-chapter/data-anchor that the viewer intercepts.

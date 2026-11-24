@@ -8,6 +8,7 @@ package studio
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -35,6 +36,28 @@ type Environment struct {
 	EmulatorHint   string `json:"emulatorHint"`
 	ToolsAvailable bool   `json:"toolsAvailable"`
 	ToolsNote      string `json:"toolsNote"`
+}
+
+// ClaudeCodeInfo describes the locally installed Claude Code CLI. exBASIC
+// Studio uses the user's existing Claude login and never stores API keys or
+// credentials itself.
+type ClaudeCodeInfo struct {
+	Available bool   `json:"available"`
+	Path      string `json:"path"`
+	Message   string `json:"message"`
+}
+
+// ClaudeCodeStatus finds Claude Code on the user's PATH.
+func (s *StudioService) ClaudeCodeStatus() ClaudeCodeInfo {
+	path, err := exec.LookPath("claude")
+	if err != nil {
+		return ClaudeCodeInfo{Message: "Claude Code was not found on PATH. Install it, then restart exBASIC Studio."}
+	}
+	abs, err := filepath.Abs(path)
+	if err == nil {
+		path = abs
+	}
+	return ClaudeCodeInfo{Available: true, Path: path, Message: "Claude Code is ready."}
 }
 
 // StudioService is bound to the frontend. Every exported method is callable
@@ -77,7 +100,7 @@ func NewWithDir(dir string) *StudioService {
 	}
 	s.operations = operations.NewManager(s.deliver)
 	s.terminals = terminal.NewManager(s.deliver)
-	s.log.Info("exBASIC Studio %s starting on %s/%s", version.Version, runtime.GOOS, runtime.GOARCH)
+	s.log.Info("exBASIC Studio %s starting on %s/%s", version.Display(), runtime.GOOS, runtime.GOARCH)
 	return s
 }
 
@@ -131,7 +154,7 @@ func (s *StudioService) current() (*project.Project, error) {
 // GetEnvironment reports versions and bundled tool availability.
 func (s *StudioService) GetEnvironment() Environment {
 	env := Environment{
-		Version:      version.Version,
+		Version:      version.Display(),
 		Platform:     runtime.GOOS + "/" + runtime.GOARCH,
 		WorkingDir:   usefulWorkingDirectory(),
 		CompilerHint: tools.Path("exbasic"),

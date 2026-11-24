@@ -6,9 +6,11 @@ vars:
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
   GOOS: '{{.GOOS | default OS}}'
-  # The single source of the application version is the VERSION file.
+  # Product version and fix-build revision are independent release inputs.
   VERSION:
     sh: go run ./build/tools/version --print
+  BUILD_NUMBER:
+    sh: go run ./build/tools/version --print-build
   # Staged tools built from the pinned sources in third_party/.
   STAGE_DIR: '{{.ROOT_DIR}}/build/stage/{{OS}}-{{ARCH}}'
   BASH: '{{if eq OS "windows"}}"C:/Program Files/Git/bin/bash.exe"{{else}}bash{{end}}'
@@ -116,12 +118,12 @@ tasks:
       - task: test:e2e
 
   version:sync:
-    desc: Apply the VERSION file to every build and package definition
+    desc: Apply VERSION and BUILD_NUMBER to every build and package definition
     cmds:
       - go run ./build/tools/version
 
   version:check:
-    desc: Fail if any build or package definition does not match VERSION
+    desc: Fail if build/package definitions do not match VERSION and BUILD_NUMBER
     cmds:
       - go run ./build/tools/version --check
 

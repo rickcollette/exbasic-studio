@@ -22,6 +22,7 @@ for command in go node npm python3 xcrun codesign hdiutil ditto lipo git make; d
 done
 
 VERSION="$(tr -d '\r\n' < "$ROOT/VERSION")"
+BUILD_NUMBER="$(tr -d '\r\n' < "$ROOT/BUILD_NUMBER")"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/exbasic-macos-arches.XXXXXX")"
 cleanup() {
   case "$WORK" in "${TMPDIR:-/tmp}"/exbasic-macos-arches.*) rm -rf -- "$WORK" ;; esac
@@ -120,13 +121,14 @@ for PID in "${PIDS[@]}"; do
 done
 test "$STATUS" -eq 0 || { echo "one or more macOS architecture builds failed" >&2; exit 1; }
 
-python3 - "$VERSION" "$OUT/exbasic-studio-$VERSION-macos-build-manifest.json" <<'PY'
+python3 - "$VERSION" "$BUILD_NUMBER" "$OUT/exbasic-studio-$VERSION-macos-build-manifest.json" <<'PY'
 import json, platform, subprocess, sys
-version, output = sys.argv[1:]
+version, build, output = sys.argv[1:]
 sdk = subprocess.check_output(["xcrun", "--sdk", "macosx", "--show-sdk-version"], text=True).strip()
 document = {
     "schemaVersion": 1,
     "applicationVersion": version,
+    "buildNumber": int(build),
     "platform": "macos",
     "architectures": ["amd64", "arm64"],
     "minimumMacOS": "12.0",

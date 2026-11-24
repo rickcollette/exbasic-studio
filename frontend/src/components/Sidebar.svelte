@@ -9,8 +9,9 @@
   import Manual from './sidebar/Manual.svelte';
   import Settings from './sidebar/Settings.svelte';
   import SpritesSide from './sidebar/SpritesSide.svelte';
+  import ClaudeCode from './sidebar/ClaudeCode.svelte';
 
-  const titles = { explorer: 'Explorer', search: 'Search', atr: 'ATR Explorer', source: 'Source Control', run: 'Run and Debug', emulator: 'ex800 Emulator', sprites: 'Sprite Studio', manual: 'exBASIC Manual', settings: 'Settings' } as const;
+  const titles = { explorer: 'Explorer', search: 'Search', atr: 'ATR Explorer', source: 'Source Control', run: 'Run and Debug', emulator: 'ex800 Emulator', sprites: 'Sprite Studio', claude: 'Claude Code', manual: 'exBASIC Manual', settings: 'Settings' } as const;
 </script>
 
 <h2 class="sidebar-title">{titles[wb.ui.activity]}</h2>
@@ -22,6 +23,7 @@
   {:else if wb.ui.activity === 'run'}<RunDebug />
   {:else if wb.ui.activity === 'emulator'}<EmulatorSide />
   {:else if wb.ui.activity === 'sprites'}<SpritesSide />
+  {:else if wb.ui.activity === 'claude'}<ClaudeCode />
   {:else if wb.ui.activity === 'manual'}<Manual />
   {:else}<Settings />{/if}
 </div>

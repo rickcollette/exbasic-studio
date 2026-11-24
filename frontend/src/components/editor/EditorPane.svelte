@@ -30,7 +30,7 @@
       },
     });
     wb.editorAction = action => {
-      if (!view || !wb.editors.activeTab) return false;
+      if (!view || wb.editors.activeTab?.kind !== 'text') return false;
       switch (action) {
         case 'undo': undo(view); break;
         case 'redo': redo(view); break;
@@ -63,7 +63,7 @@
 
   function applyMarkers() {
     const tab = wb.editors.activeTab;
-    if (!view || !tab) return;
+    if (!view || !tab || tab.kind !== 'text') return;
     const diagnostics = toEditorDiagnostics(view.state, wb.problems.forPath(tab.path));
     const marks = wb.debug.breakpointsFor(tab.path).map(bp => ({ line: bp.line, enabled: bp.enabled, verified: !wb.debug.active || bp.verified }));
     const current = wb.debug.currentLine;
@@ -92,7 +92,7 @@
 
   // The split pane edits the same document; its changes are mirrored back.
   $effect(() => {
-    const open = wb.editors.splitOpen && !!active;
+    const open = wb.editors.splitOpen && active?.kind === 'text';
     if (open && splitHost && !splitView && view) {
       splitView = new EditorView({
         parent: splitHost,

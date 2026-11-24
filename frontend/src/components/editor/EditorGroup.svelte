@@ -9,12 +9,31 @@
   import EmulatorView from './EmulatorView.svelte';
   import ConflictView from './ConflictView.svelte';
   import SpriteStudio from './SpriteStudio.svelte';
+  import ImageView from './ImageView.svelte';
+  import DocumentPreview from './DocumentPreview.svelte';
+  import { hasDocumentPreview, isJsonPath, isMermaidPath } from '../../lib/fileTypes';
 
   const editors = wb.editors;
   const showEmulator = $derived(editors.active === EMULATOR_TAB);
   const tab = $derived(editors.activeTab);
   const sprite = $derived(wb.sprites.doc(editors.active));
   let tabList = $state<HTMLElement>();
+  type PreviewMode = 'source' | 'preview' | 'side';
+  let previewModes = $state<Record<string, PreviewMode>>({});
+
+  function previewMode(path: string): PreviewMode {
+    return previewModes[path] ?? (isMermaidPath(path) ? 'preview' : 'source');
+  }
+
+  function togglePreview(path: string): void {
+    previewModes = { ...previewModes, [path]: previewMode(path) === 'preview' ? 'source' : 'preview' };
+  }
+
+  function togglePreviewSide(path: string): void {
+    const next = previewMode(path) === 'side' ? 'source' : 'side';
+    if (next === 'side') editors.splitOpen = false;
+    previewModes = { ...previewModes, [path]: next };
+  }
 
   $effect(() => { wb.emulator.setVisible(showEmulator); });
 
@@ -90,14 +109,29 @@
   {:else if sprite}<i aria-hidden="true" class="codicon codicon-paintcan"></i>{#each sprite.path.split('/') as part, index}{#if index > 0}<i aria-hidden="true" class="codicon codicon-chevron-right"></i>{/if}<span>{part}</span>{/each}<span>(Sprite Studio)</span>
   {:else if tab}{#each tab.path.split('/') as part, index}{#if index > 0}<i aria-hidden="true" class="codicon codicon-chevron-right"></i>{/if}<span>{part}</span>{/each}
   {:else}<span>exBASIC Studio</span>{/if}
+  <span class="breadcrumb-spacer"></span>
+  {#if tab?.kind === 'text' && isJsonPath(tab.path)}
+    <button class="icon-button" title="Format JSON" aria-label="Format JSON" onclick={() => editors.formatJson(tab.path)}><i aria-hidden="true" class="codicon codicon-json"></i></button>
+  {/if}
+  {#if tab?.kind === 'text' && hasDocumentPreview(tab.path)}
+    <button class="preview-toggle" aria-pressed={previewMode(tab.path) === 'preview'} onclick={() => togglePreview(tab.path)}>
+      <i aria-hidden="true" class={`codicon codicon-${previewMode(tab.path) === 'preview' ? 'code' : 'open-preview'}`}></i> {previewMode(tab.path) === 'preview' ? 'Show Source' : 'Open Preview'}
+    </button>
+    <button class="icon-button" title={previewMode(tab.path) === 'side' ? 'Close Preview to the Side' : 'Open Preview to the Side'} aria-label={previewMode(tab.path) === 'side' ? 'Close Preview to the Side' : 'Open Preview to the Side'} aria-pressed={previewMode(tab.path) === 'side'} onclick={() => togglePreviewSide(tab.path)}><i aria-hidden="true" class="codicon codicon-split-horizontal"></i></button>
+  {/if}
 </div>
 
 {#if tab?.external}
   <div class="banner" role="alert">
     <i aria-hidden="true" class="codicon codicon-warning"></i>
     {#if tab.external === 'deleted'}
-      <span>{tab.path} was deleted or moved outside the editor. Your text is kept here; save to write it back.</span>
-      <button onclick={() => editors.save(tab.path)}>Save</button><button onclick={() => editors.resolveExternal(tab.path, 'keep')}>Dismiss</button>
+      {#if tab.kind === 'image'}
+        <span>{tab.path} was deleted or moved outside the editor. The last loaded image remains visible.</span>
+        <button onclick={() => editors.resolveExternal(tab.path, 'reload')}>Try Again</button><button onclick={() => editors.resolveExternal(tab.path, 'keep')}>Dismiss</button>
+      {:else}
+        <span>{tab.path} was deleted or moved outside the editor. Your text is kept here; save to write it back.</span>
+        <button onclick={() => editors.save(tab.path)}>Save</button><button onclick={() => editors.resolveExternal(tab.path, 'keep')}>Dismiss</button>
+      {/if}
     {:else}
       <span>{tab.path} changed on disk and you have unsaved changes.</span>
       <button onclick={() => editors.resolveExternal(tab.path, 'reload')}>Reload From Disk</button><button onclick={() => editors.resolveExternal(tab.path, 'keep')}>Keep My Changes</button>
@@ -107,13 +141,17 @@
 
 <div class="editor-content" id="editor-content" role="tabpanel" aria-labelledby={showEmulator ? 'tab-emulator' : sprite ? `tab-${sprite.id}` : tab ? `tab-${tab.path}` : undefined}>
   <!-- The text editor stays mounted so tab switches keep their state. -->
-  <div class="pane" class:hidden={!tab || showEmulator || !!wb.git.conflict}><EditorPane /></div>
+  <div class="pane" class:document-side-source={!!tab && hasDocumentPreview(tab.path) && previewMode(tab.path) === 'side'} class:hidden={!tab || tab.kind !== 'text' || showEmulator || !!wb.git.conflict || (hasDocumentPreview(tab.path) && previewMode(tab.path) === 'preview')}><EditorPane /></div>
   {#if wb.git.conflict && !showEmulator}
     <div class="pane"><ConflictView /></div>
   {:else if showEmulator}
     <div class="pane"><EmulatorView /></div>
   {:else if sprite}
     {#key sprite.id}<div class="pane"><SpriteStudio doc={sprite} /></div>{/key}
+  {:else if tab?.kind === 'image'}
+    <div class="pane"><ImageView path={tab.path} src={tab.image ?? ''} /></div>
+  {:else if tab?.kind === 'text' && hasDocumentPreview(tab.path) && previewMode(tab.path) !== 'source'}
+    <div class="pane" class:document-side-preview={previewMode(tab.path) === 'side'}><DocumentPreview path={tab.path} text={editors.text(tab.path)} /></div>
   {:else if !tab}
     <div class="pane welcome">
       <img src="/exbasic-logo-icon.png" alt="" draggable="false" />

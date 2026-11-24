@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderManual, slugify, highlightMatches, chapterTitle } from './markdown';
+import { renderManual, renderDocumentMarkdown, slugify, highlightMatches, chapterTitle } from './markdown';
 
 describe('manual rendering', () => {
   it('renders headings with anchors, tables and code blocks', () => {
@@ -48,5 +48,14 @@ describe('manual rendering', () => {
     expect(chapterTitle('05-expressions.md')).toBe('5. Expressions');
     expect(chapterTitle('A-keyword-reference.md')).toBe('Appendix A. Keyword Reference');
     expect(chapterTitle('README.md')).toBe('README');
+  });
+
+  it('renders safe workspace Markdown including Mermaid code fences', () => {
+    const html = renderDocumentMarkdown('# Diagram\n\n```mermaid\ngraph TD; A-->B\n```\n\n![local](img/graph.png)\n\n![remote](https://example.com/tracker.png)\n\n<script>alert(1)</script>\n\n[site](https://example.com)');
+    expect(html).toContain('language-mermaid');
+    expect(html).toContain('data-workspace-image="img/graph.png"');
+    expect(html).not.toContain('src=');
+    expect(html).toContain('href="https://example.com"');
+    expect(html).not.toMatch(/<script|alert\(1\)/i);
   });
 });

@@ -19,7 +19,10 @@ import (
 
 const ConfigName = "exbasic.project.json"
 const MaxSourceBytes int64 = 2 << 20
-const MaxProjectFiles = 4000
+
+// MaxProjectFiles is a safety ceiling, not an Explorer filter. Normal project
+// folders are shown in full, including generated, dependency and dot folders.
+const MaxProjectFiles = 100000
 
 // maxEntryScan bounds the search for a default entry file in a folder that
 // has no project configuration.
@@ -525,6 +528,50 @@ func (p *Project) SaveBinary(rel string, data []byte) error {
 	return atomicWrite(path, data)
 }
 
+// ExportFile copies one regular workspace file to an absolute path chosen by
+// the user. Unlike ReadBinary, exports are streamed and are not limited to the
+// editor's in-memory file-size ceiling.
+func (p *Project) ExportFile(rel, destination string) error {
+	source, err := p.Resolve(rel)
+	if err != nil {
+		return err
+	}
+	info, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return errors.New("only regular files can be downloaded")
+	}
+	if !filepath.IsAbs(destination) {
+		return errors.New("download destination must be an absolute path")
+	}
+	destination = filepath.Clean(destination)
+	if same, sameErr := filepath.Abs(source); sameErr == nil {
+		if target, targetErr := filepath.Abs(destination); targetErr == nil && ((runtime.GOOS == "windows" && strings.EqualFold(same, target)) || (runtime.GOOS != "windows" && same == target)) {
+			return errors.New("download destination is the original file")
+		}
+	}
+	in, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(destination, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	_, copyErr := io.Copy(out, in)
+	if copyErr == nil {
+		copyErr = out.Sync()
+	}
+	closeErr := out.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	return closeErr
+}
+
 // CreateDirectory creates a folder inside the project workspace.
 func (p *Project) CreateDirectory(rel string) error {
 	path, err := p.Resolve(rel)
@@ -704,9 +751,6 @@ func (p *Project) Files() ([]File, error) {
 			return nil
 		}
 		if d.IsDir() {
-			if path != p.Root && (strings.HasPrefix(d.Name(), ".") || d.Name() == "build" || d.Name() == "node_modules") {
-				return filepath.SkipDir
-			}
 			return nil
 		}
 		if !d.Type().IsRegular() {
@@ -730,8 +774,9 @@ func (p *Project) Files() ([]File, error) {
 	return files, err
 }
 
-// Directories returns every visible workspace directory, including empty
-// directories. Files alone are not enough to build an editor-style explorer.
+// Directories returns every workspace directory, including empty, generated,
+// dependency and dot directories. Files alone are not enough to build an
+// editor-style explorer.
 func (p *Project) Directories() ([]string, error) {
 	directories := make([]string, 0, 16)
 	err := filepath.WalkDir(p.Root, func(path string, d fs.DirEntry, walkErr error) error {
@@ -747,9 +792,6 @@ func (p *Project) Directories() ([]string, error) {
 		}
 		if !d.IsDir() || path == p.Root {
 			return nil
-		}
-		if strings.HasPrefix(d.Name(), ".") || d.Name() == "build" || d.Name() == "node_modules" {
-			return filepath.SkipDir
 		}
 		rel, err := filepath.Rel(p.Root, path)
 		if err != nil {
