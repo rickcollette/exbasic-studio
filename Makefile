@@ -7,14 +7,15 @@ REPO ?=
 ARCH ?= amd64
 REMOTE_TARGET ?= all
 COMMIT_ALL ?= 0
+RELEASE_TYPE ?= fix
 
 REPO_ARG := $(if $(strip $(REPO)),--repo "$(REPO)",)
 COMMIT_ARG := $(if $(filter 1 true yes,$(COMMIT_ALL)),--commit-all,)
 
-.PHONY: help clean build check package dist release-check release release-draft release-publish
+.PHONY: help clean build check package dist release-check release release-draft release-feature release-publish
 
 help: ## Show the available commands.
-	@$(PYTHON) -c "print('EXBASIC Studio build commands\n\n  make clean            Remove generated build and distribution output\n  make build            Build the application\n  make check            Run the project validation suite\n  make package          Build local platform packages\n  make dist             Build Windows locally and Linux/macOS remotely into DIST\n  make release-check    Validate an existing DIST release without changing GitHub\n  make release          Build DIST, push the tag, and create a draft GitHub release\n  make release-publish  Build DIST, push the tag, and publish the GitHub release\n\nRelease options: REMOTE=origin REPO=owner/repository ARCH=amd64 REMOTE_TARGET=all\n                 COMMIT_ALL=1 (explicitly commit the complete worktree)')"
+	@$(PYTHON) -c "print('EXBASIC Studio build commands\n\n  make clean            Remove generated build and distribution output\n  make build            Build the application\n  make check            Run the project validation suite\n  make package          Build local platform packages\n  make dist             Build Windows locally and Linux/macOS remotely into DIST\n  make release-check    Validate an existing DIST release without changing GitHub\n  make release          Increment the fix build, build DIST, and create a draft\n  make release-feature  Increment the minor version, build DIST, and create a draft\n  make release-publish  Publish the current draft without incrementing its version\n\nRelease options: REMOTE=origin REPO=owner/repository ARCH=amd64 REMOTE_TARGET=all\n                 RELEASE_TYPE=fix|feature COMMIT_ALL=1')"
 
 clean: ## Remove generated build and distribution output.
 	$(PYTHON) scripts/clean.py
@@ -37,13 +38,15 @@ release-check: ## Validate release metadata and DIST assets (dry run).
 	$(PYTHON) scripts/publish_release.py --remote "$(REMOTE)" $(REPO_ARG) $(COMMIT_ARG)
 
 release: ## Push the release tag and create a draft GitHub release.
+	$(PYTHON) scripts/bump_version.py --kind "$(RELEASE_TYPE)" --commit --remote "$(REMOTE)" $(COMMIT_ARG)
 	$(PYTHON) scripts/publish_release.py --source-only --remote "$(REMOTE)" $(REPO_ARG) $(COMMIT_ARG)
 	$(MAKE) dist
 	$(PYTHON) scripts/publish_release.py --execute --remote "$(REMOTE)" $(REPO_ARG) $(COMMIT_ARG)
 
 release-draft: release ## Alias for release.
 
-release-publish: ## Push the release tag and publish the GitHub release.
-	$(PYTHON) scripts/publish_release.py --source-only --remote "$(REMOTE)" $(REPO_ARG) $(COMMIT_ARG)
-	$(MAKE) dist
+release-feature: ## Increment the minor version and create a draft release.
+	$(MAKE) release RELEASE_TYPE=feature
+
+release-publish: ## Publish the current draft without changing its version.
 	$(PYTHON) scripts/publish_release.py --execute --publish-release --remote "$(REMOTE)" $(REPO_ARG) $(COMMIT_ARG)

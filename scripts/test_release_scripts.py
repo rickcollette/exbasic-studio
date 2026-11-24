@@ -11,6 +11,7 @@ import unittest
 import publish_release
 import remote_build
 import stage_windows_release
+import bump_version
 
 
 class RemoteBuildTests(unittest.TestCase):
@@ -97,6 +98,23 @@ class StageWindowsReleaseTests(unittest.TestCase):
             )
             self.assertEqual(staged[0].read_bytes(), b"installer")
             self.assertEqual(staged[1].read_bytes(), b"portable")
+
+
+class BumpVersionTests(unittest.TestCase):
+    def test_fix_increments_only_the_build(self) -> None:
+        self.assertEqual(bump_version.next_identity("1.0.0", 7, "fix"), ("1.0.0", 8))
+
+    def test_feature_increments_minor_and_resets_build(self) -> None:
+        self.assertEqual(bump_version.next_identity("1.0.0", 7, "feature"), ("1.1.0", 1))
+
+    def test_feature_promotes_unreleased_changelog_notes(self) -> None:
+        source = "# Changelog\n\n## [Unreleased]\n\n### Added\n\n- Preview.\n\n## [1.0.0]\n\n- Initial.\n"
+        updated = bump_version.promote_unreleased(source, "1.1.0")
+        self.assertIn("## [Unreleased]\n\n## [1.1.0]\n\n### Added", updated)
+
+    def test_feature_requires_unreleased_notes(self) -> None:
+        with self.assertRaises(bump_version.BumpError):
+            bump_version.promote_unreleased("# Changelog\n\n## [Unreleased]\n\n## [1.0.0]\n", "1.1.0")
 
 
 if __name__ == "__main__":

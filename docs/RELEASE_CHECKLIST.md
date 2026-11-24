@@ -8,8 +8,11 @@ final release) is cut only after its candidate passes everything below.
 ## Prepare
 
 - [ ] `main` is green in CI on Windows, macOS and Linux.
-- [ ] `VERSION` holds the new version (`1.0.0-rc.N` for a candidate) and
-      `task version:sync` has been run and committed.
+- [ ] For a fix release, use `make release`; it retains `VERSION`, increments
+      `BUILD_NUMBER`, synchronizes package metadata and commits the change.
+- [ ] For a feature release, put the notes under `## [Unreleased]` and use
+      `make release-feature`; it increments the minor version, resets
+      `BUILD_NUMBER` to 1 and promotes those notes to the new version section.
 - [ ] `CHANGELOG.md` has a `## [<version>]` section describing the release.
 - [ ] `THIRD_PARTY_NOTICES.md` matches the bundled components and versions.
 - [ ] No high-severity advisories: the *Known vulnerabilities* CI job passes.

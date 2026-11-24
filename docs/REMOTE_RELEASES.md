@@ -70,6 +70,9 @@ Every distributable, a per-lane build manifest and `SHA256SUMS.txt` are written
 to `DIST/`. Existing Windows artifacts for the same version are preserved and
 included in the checksum file.
 
+From the Windows release workstation, `make dist` builds and stages the
+Windows installer and portable ZIP before running both remote builders.
+
 ## Push source and create a GitHub release
 
 The publisher is read-only unless `--execute` is present. Because the release
@@ -97,3 +100,21 @@ python scripts/publish_release.py --repo OWNER/REPO --execute --publish-release
 The GitHub CLI must already be authenticated (`gh auth login`). Never use
 `--commit-all` without reviewing `git status`; it deliberately includes every
 tracked and untracked source change.
+
+The Makefile wraps the complete versioning, build and publishing flow:
+
+```shell
+# Fix release: 1.0.0 build 1 becomes 1.0.0 build 2.
+make release
+
+# Feature release: 1.0.0 becomes 1.1.0 and the build resets to 1.
+make release-feature
+
+# Publish the current draft without changing its version again.
+make release-publish
+```
+
+`make release` and `make release-feature` commit the synchronized version
+metadata before building. They require a clean worktree unless
+`COMMIT_ALL=1` is explicitly supplied. A failed build can be retried safely:
+an untagged release identity is reused rather than incremented again.
