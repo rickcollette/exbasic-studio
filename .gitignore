@@ -22,6 +22,11 @@ build/
 .gradle/
 DIST/
 .private/
-scripts/
+scripts/*
+!scripts/clean.py
 publish_release.py
 remote_build.py
+!scripts/publish_release.py
+!scripts/remote_build.py
+!scripts/stage_windows_release.py
+!scripts/test_release_scripts.py
