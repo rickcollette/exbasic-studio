@@ -70,8 +70,8 @@ install_go_tool() {
     return 0
   fi
 
-  echo "$command_name is not fully cached; falling back to the network" >&2
-  retry_network env GOBIN="$TOOL_CACHE" go install "$module"
+  echo "$command_name is not fully cached; fetching its pinned tag directly" >&2
+  retry_network env GOPROXY=direct GOBIN="$TOOL_CACHE" go install "$module"
 }
 
 install_go_tool task github.com/go-task/task/v3/cmd/task@v3.40.1
