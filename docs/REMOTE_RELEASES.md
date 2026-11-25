@@ -43,8 +43,10 @@ the exact highest referenced glibc symbol so the baseline remains auditable.
 
 The Mac must be Apple Silicon with Rosetta 2, Xcode command-line tools, Go,
 Node and network access. The runner installs pinned Wails v3.0.0 and Task
-v3.40.1 into its temporary build directory, and Go may fetch the required
-Go 1.26 toolchain automatically. The script builds and self-tests separate
+v3.40.1 into a persistent per-user release-tool cache. It first builds them
+offline from Go's module cache and uses bounded network retries only when the
+module source has never been cached. Go may fetch the required Go 1.26
+toolchain automatically. The script builds and self-tests separate
 Intel (`amd64`) and Apple Silicon (`arm64`) application bundles in parallel.
 It produces a ZIP and DMG for each architecture. Bundles are ad-hoc signed,
 not Developer ID signed or notarized; public distribution without Gatekeeper
@@ -64,6 +66,14 @@ Build both platforms, or only one:
 python scripts/remote_build.py
 python scripts/remote_build.py --target linux
 python scripts/remote_build.py --target mac
+```
+
+If one remote platform fails after the other completes, retry only the failed
+platform. The existing successful artifacts are preserved and the checksum
+file is regenerated across all platforms when the retry succeeds:
+
+```shell
+make release REMOTE_TARGET=mac
 ```
 
 Every distributable, a per-lane build manifest and `SHA256SUMS.txt` are written

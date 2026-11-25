@@ -7,6 +7,28 @@ OUT="${1:?usage: run-macos.sh OUTPUT_DIRECTORY}"
 OUT="$(mkdir -p "$OUT" && cd "$OUT" && pwd)"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/go/bin:$HOME/go/bin:$PATH"
 
+# The release host downloads pinned Go tools from the public module proxy.
+# Retry transient TLS/network failures, but keep a firm upper bound so a real
+# configuration problem still fails the build promptly.
+retry_network() {
+  local attempt=1
+  local max_attempts=4
+  local delay=5
+  while true; do
+    if "$@"; then
+      return 0
+    fi
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      echo "network command failed after $attempt attempts: $1" >&2
+      return 1
+    fi
+    echo "network command failed; retrying in ${delay}s ($attempt/$max_attempts)" >&2
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
 test "$(uname -s)" = Darwin || { echo "the MAC SSH entry must reach macOS" >&2; exit 1; }
 test "$(uname -m)" = arm64 || {
   echo "The macOS builder must be Apple Silicon so it can test arm64 natively and amd64 through Rosetta." >&2
@@ -29,14 +51,31 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$WORK/bin"
-if ! command -v task >/dev/null 2>&1; then
-  GOBIN="$WORK/bin" go install github.com/go-task/task/v3/cmd/task@v3.40.1
-fi
-if ! command -v wails3 >/dev/null 2>&1; then
-  GOBIN="$WORK/bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
-fi
-export PATH="$WORK/bin:$PATH"
+TOOL_CACHE="${EXBASIC_RELEASE_TOOL_CACHE:-$HOME/.cache/exbasic-studio-release/bin}"
+mkdir -p "$TOOL_CACHE"
+export PATH="$TOOL_CACHE:$PATH"
+
+install_go_tool() {
+  local command_name="$1"
+  local module="$2"
+  if command -v "$command_name" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # A previous release build leaves the module source in Go's module cache.
+  # Build from it without touching the network, then retain the resulting
+  # executable for every later release job on this host.
+  echo "Installing $command_name from the local Go module cache"
+  if env GOPROXY=off GOSUMDB=off GOBIN="$TOOL_CACHE" go install "$module"; then
+    return 0
+  fi
+
+  echo "$command_name is not fully cached; falling back to the network" >&2
+  retry_network env GOBIN="$TOOL_CACHE" go install "$module"
+}
+
+install_go_tool task github.com/go-task/task/v3/cmd/task@v3.40.1
+install_go_tool wails3 github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
 
 build_arch() {
   ARCH="$1"
