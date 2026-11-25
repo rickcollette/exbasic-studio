@@ -6,7 +6,7 @@
 name: "exbasic-studio"
 arch: ${GOARCH}
 platform: "linux"
-version: "1.0.0"
+version: "1.0.1"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
@@ -14,7 +14,7 @@ description: "A desktop IDE for exBASIC on Atari 8-bit systems"
 vendor: "exBASIC Studio Contributors"
 homepage: "https://github.com/exbasic/exbasic-studio"
 license: "MIT"
-release: "3"
+release: "2"
 
 contents:
   - src: "./bin/exbasic-studio"

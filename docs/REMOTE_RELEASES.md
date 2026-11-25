@@ -115,7 +115,7 @@ tracked and untracked source change.
 The Makefile wraps the complete versioning, build and publishing flow:
 
 ```shell
-# Fix release: 1.0.0 build 1 becomes 1.0.0 build 2.
+# Fix release: 1.0.0 build 1 becomes 1.0.1 build 2.
 make release
 
 # Feature release: 1.0.0 becomes 1.1.0 and the build resets to 1.

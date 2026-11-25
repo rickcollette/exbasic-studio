@@ -58,9 +58,9 @@ def release_tag(version: str, build: int) -> str:
 
 
 def next_identity(version: str, build: int, kind: str) -> tuple[str, int]:
-    major, minor, _patch = (int(part) for part in version.split("."))
+    major, minor, patch = (int(part) for part in version.split("."))
     if kind == "fix":
-        return version, build + 1
+        return f"{major}.{minor}.{patch + 1}", build + 1
     if kind == "feature":
         return f"{major}.{minor + 1}.0", 1
     raise BumpError(f"unsupported release kind: {kind!r}")
@@ -116,7 +116,7 @@ def bump(root: Path, *, kind: str, remote: str) -> tuple[str, int, bool]:
         return version, build, False
 
     new_version, new_build = next_identity(version, build, kind)
-    if kind == "feature":
+    if new_version != version:
         changelog = root / "CHANGELOG.md"
         updated = promote_unreleased(changelog.read_text(encoding="utf-8"), new_version)
         changelog.write_text(updated, encoding="utf-8", newline="\n")

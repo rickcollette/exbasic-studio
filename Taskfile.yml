@@ -6,7 +6,7 @@ vars:
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
   GOOS: '{{.GOOS | default OS}}'
-  # Product version and fix-build revision are independent release inputs.
+  # Fixes increment both the semantic patch and the platform build revision.
   VERSION:
     sh: go run ./build/tools/version --print
   BUILD_NUMBER:

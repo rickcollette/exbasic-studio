@@ -101,8 +101,8 @@ class StageWindowsReleaseTests(unittest.TestCase):
 
 
 class BumpVersionTests(unittest.TestCase):
-    def test_fix_increments_only_the_build(self) -> None:
-        self.assertEqual(bump_version.next_identity("1.0.0", 7, "fix"), ("1.0.0", 8))
+    def test_fix_increments_patch_and_build(self) -> None:
+        self.assertEqual(bump_version.next_identity("1.0.0", 7, "fix"), ("1.0.1", 8))
 
     def test_feature_increments_minor_and_resets_build(self) -> None:
         self.assertEqual(bump_version.next_identity("1.0.0", 7, "feature"), ("1.1.0", 1))

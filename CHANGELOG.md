@@ -4,10 +4,19 @@ All changes to exBASIC Studio are here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
-Fix-only releases retain their product version and increment `BUILD_NUMBER`.
+Fix-only releases increment both the patch version and `BUILD_NUMBER`.
 Feature releases increment the minor version and reset `BUILD_NUMBER` to 1.
 
 ## [Unreleased]
+
+## [1.0.1]
+
+### Fixed
+
+- Release builds now increment the semantic patch version as well as the
+  platform build number.
+- macOS release builders reuse pinned Task and Wails binaries from a persistent
+  cache instead of depending on a fresh public Go proxy download.
 
 ## [1.0.0]
 
