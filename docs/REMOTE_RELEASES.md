@@ -114,7 +114,8 @@ make release-feature
 make release-publish
 ```
 
-`make release` and `make release-feature` commit the synchronized version
-metadata before building. They require a clean worktree unless
-`COMMIT_ALL=1` is explicitly supplied. A failed build can be retried safely:
-an untagged release identity is reused rather than incremented again.
+`make release` and `make release-feature` include the current worktree in the
+release commit, synchronize the version metadata, and commit everything before
+building. Set `COMMIT_ALL=0` to require a clean worktree instead. A failed build
+can be retried safely: an untagged release identity is reused rather than
+incremented again.

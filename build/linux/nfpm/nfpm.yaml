@@ -14,7 +14,7 @@ description: "A desktop IDE for exBASIC on Atari 8-bit systems"
 vendor: "exBASIC Studio Contributors"
 homepage: "https://github.com/exbasic/exbasic-studio"
 license: "MIT"
-release: "1"
+release: "2"
 
 contents:
   - src: "./bin/exbasic-studio"

@@ -6,7 +6,7 @@ REMOTE ?= origin
 REPO ?=
 ARCH ?= amd64
 REMOTE_TARGET ?= all
-COMMIT_ALL ?= 0
+COMMIT_ALL ?= 1
 RELEASE_TYPE ?= fix
 
 REPO_ARG := $(if $(strip $(REPO)),--repo "$(REPO)",)
@@ -15,7 +15,7 @@ COMMIT_ARG := $(if $(filter 1 true yes,$(COMMIT_ALL)),--commit-all,)
 .PHONY: help clean build check package dist release-check release release-draft release-feature release-publish
 
 help: ## Show the available commands.
-	@$(PYTHON) -c "print('EXBASIC Studio build commands\n\n  make clean            Remove generated build and distribution output\n  make build            Build the application\n  make check            Run the project validation suite\n  make package          Build local platform packages\n  make dist             Build Windows locally and Linux/macOS remotely into DIST\n  make release-check    Validate an existing DIST release without changing GitHub\n  make release          Increment the fix build, build DIST, and create a draft\n  make release-feature  Increment the minor version, build DIST, and create a draft\n  make release-publish  Publish the current draft without incrementing its version\n\nRelease options: REMOTE=origin REPO=owner/repository ARCH=amd64 REMOTE_TARGET=all\n                 RELEASE_TYPE=fix|feature COMMIT_ALL=1')"
+	@$(PYTHON) -c "print('EXBASIC Studio build commands\n\n  make clean            Remove generated build and distribution output\n  make build            Build the application\n  make check            Run the project validation suite\n  make package          Build local platform packages\n  make dist             Build Windows locally and Linux/macOS remotely into DIST\n  make release-check    Validate an existing DIST release without changing GitHub\n  make release          Commit changes, increment the fix build, build DIST, and draft\n  make release-feature  Commit changes, increment the minor version, build, and draft\n  make release-publish  Publish the current draft without incrementing its version\n\nRelease options: REMOTE=origin REPO=owner/repository ARCH=amd64 REMOTE_TARGET=all\n                 RELEASE_TYPE=fix|feature COMMIT_ALL=0 (require a clean worktree)')"
 
 clean: ## Remove generated build and distribution output.
 	$(PYTHON) scripts/clean.py
